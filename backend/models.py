@@ -37,3 +37,20 @@ class Comic(ComicBase, table=True):
 
 class ComicCreate(ComicBase):
     box_id: int
+
+
+class PicklistItemBase(SQLModel):
+    title: str
+    issue_number: str
+    publisher: str
+    notes: Optional[str] = None
+
+
+class PicklistItem(PicklistItemBase, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    date_added: datetime = Field(default_factory=datetime.utcnow)
+    status: str = Field(default="pending")
+
+
+class PicklistItemCreate(PicklistItemBase):
+    pass

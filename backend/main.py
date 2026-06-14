@@ -6,7 +6,7 @@ from sqlmodel import Session, select
 from dotenv import load_dotenv
 
 from database import init_db, get_session
-from models import Box, BoxCreate, Comic, ComicCreate
+from models import Box, BoxCreate, Comic, ComicCreate, PicklistItem, PicklistItemCreate
 from schema import BatchScanPayload, ScanRequest
 
 # Import our utility engine functions
@@ -267,6 +267,80 @@ async def get_box_valuation(box_id: int, session: Session = Depends(get_session)
             "average_days_in_box": round(avg_days, 1)
         }
     }
+
+
+# --- BOX CONTENTS ENDPOINT ---
+
+@app.get("/api/v1/boxes/{box_id}/comics")
+def get_box_comics(box_id: int, session: Session = Depends(get_session)):
+    box = session.get(Box, box_id)
+    if not box:
+        raise HTTPException(status_code=404, detail="Box not found")
+    statement = select(Comic).where(Comic.box_id == box_id)
+    comics = session.exec(statement).all()
+    return [
+        {
+            "id": c.id,
+            "title": c.title,
+            "issue_number": c.issue_number,
+            "publisher": c.publisher,
+            "cover_image": c.cover_image,
+            "estimated_value": c.estimated_value,
+            "barcode": c.barcode,
+            "date_scanned": c.date_scanned.isoformat() if c.date_scanned else None,
+        }
+        for c in comics
+    ]
+
+
+# --- PICKLIST ENDPOINTS ---
+
+@app.get("/api/v1/picklist")
+def read_picklist(session: Session = Depends(get_session)):
+    statement = select(PicklistItem).order_by(PicklistItem.date_added.desc())
+    return session.exec(statement).all()
+
+
+@app.post("/api/v1/picklist", response_model=PicklistItem)
+def create_picklist_item(item: PicklistItemCreate, session: Session = Depends(get_session)):
+    db_item = PicklistItem.from_orm(item)
+    session.add(db_item)
+    session.commit()
+    session.refresh(db_item)
+    return db_item
+
+
+@app.patch("/api/v1/picklist/{item_id}", response_model=PicklistItem)
+def update_picklist_item(item_id: int, payload: dict, session: Session = Depends(get_session)):
+    db_item = session.get(PicklistItem, item_id)
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Picklist item not found")
+    for key, value in payload.items():
+        if hasattr(db_item, key):
+            setattr(db_item, key, value)
+    session.commit()
+    session.refresh(db_item)
+    return db_item
+
+
+@app.delete("/api/v1/picklist/{item_id}")
+def delete_picklist_item(item_id: int, session: Session = Depends(get_session)):
+    db_item = session.get(PicklistItem, item_id)
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Picklist item not found")
+    session.delete(db_item)
+    session.commit()
+    return {"status": "deleted"}
+
+
+@app.delete("/api/v1/picklist")
+def clear_picklist(session: Session = Depends(get_session)):
+    session.exec(select(PicklistItem)).all()
+    statement = select(PicklistItem)
+    for item in session.exec(statement).all():
+        session.delete(item)
+    session.commit()
+    return {"status": "cleared"}
 
 
 # --- SEARCH ENGINE ENDPOINTS ---
