@@ -1,15 +1,20 @@
 // src/components/SeriesVolumeViewer.jsx
-import React, { useEffect, useState } from 'react';
-import { fetchSeriesOverview } from '../utilities/api';
+import React, { useEffect, useState, useRef } from 'react';
+import { fetchSeriesOverview, fetchComicDetail, fetchCoverForIssue, addToPicklist } from '../utilities/api';
+import ComicBubbleIcon from './ComicBubbleIcon';
+import ComicDetailModal from './ComicDetailModal';
 
 export default function SeriesVolumeViewer({ title, publisher, onClose }) {
   const [seriesData, setSeriesData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const pollRef = useRef(null);
+  const [selectedComic, setSelectedComic] = useState(null);
+  const [comicLoading, setComicLoading] = useState(false);
   
   // 💡 Filter state: 'all' | 'have' | 'missing'
   const [filterMode, setFilterMode] = useState('all');
 
-  useEffect(() => {
+  const loadSeries = () => {
     if (!title || !publisher) return;
     setLoading(true);
     fetchSeriesOverview(title, publisher)
@@ -21,7 +26,35 @@ export default function SeriesVolumeViewer({ title, publisher, onClose }) {
         console.error(err);
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    loadSeries();
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
   }, [title, publisher]);
+
+  // Poll while covers are being gathered
+  useEffect(() => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    if (seriesData?.cover_gathering?.pending > 0) {
+      pollRef.current = setInterval(() => {
+        fetchSeriesOverview(title, publisher)
+          .then(data => {
+            setSeriesData(data);
+            if (data.cover_gathering?.pending === 0) {
+              clearInterval(pollRef.current);
+              pollRef.current = null;
+            }
+          })
+          .catch(() => {});
+      }, 8000);
+    }
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [seriesData?.cover_gathering?.pending, title, publisher]);
 
   if (!title || !publisher) return null;
 
@@ -31,6 +64,8 @@ export default function SeriesVolumeViewer({ title, publisher, onClose }) {
     if (filterMode === 'missing') return item.status !== 'in_stock';
     return true; // 'all'
   }) || [];
+
+  const gathering = seriesData?.cover_gathering;
 
   return (
     <>
@@ -156,6 +191,21 @@ export default function SeriesVolumeViewer({ title, publisher, onClose }) {
           )}
         </div>
 
+        {/* GATHERING COVERS BANNER */}
+        {gathering && gathering.pending > 0 && (
+          <div style={{
+            padding: '10px 20px', background: '#2b3a4a', borderBottom: '1px solid #4a5568',
+            display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#cbd5e0'
+          }}>
+            <span style={{ fontSize: '14px' }}>🔄</span>
+            <span>
+              Gathering comic covers: <strong>{gathering.cached}</strong> found ·{' '}
+              <strong>{gathering.pending}</strong> remaining
+              {gathering.not_found > 0 && ` · ${gathering.not_found} unavailable`}
+            </span>
+          </div>
+        )}
+
         {/* VERTICAL SCROLLABLE TRACK */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', background: '#1a202c' }}>
           {loading ? (
@@ -173,6 +223,38 @@ export default function SeriesVolumeViewer({ title, publisher, onClose }) {
               return (
                 <div 
                   key={item.id}
+                  onClick={() => {
+                    setComicLoading(true);
+                    if (hasBook) {
+                      fetchComicDetail(item.id)
+                        .then(data => {
+                          setSelectedComic(data);
+                          setComicLoading(false);
+                        })
+                        .catch(() => setComicLoading(false));
+                    } else {
+                      fetchCoverForIssue(title, item.issue_number, publisher)
+                        .then(data => {
+                          setSelectedComic({
+                            title: title,
+                            issue_number: item.issue_number,
+                            publisher: publisher,
+                            barcode: null,
+                            estimated_value: 0,
+                            cover_image: data.cover_url,
+                            cover_status: data.cover_status,
+                            interest_count: data.interest_count,
+                            date_scanned: null,
+                            writer: null,
+                            penciler: null,
+                            keywords: null,
+                            box: { name: item.box_name, location: item.box_location },
+                          });
+                          setComicLoading(false);
+                        })
+                        .catch(() => setComicLoading(false));
+                    }
+                  }}
                   style={{
                     display: 'flex',
                     background: '#2d3748',
@@ -181,28 +263,40 @@ export default function SeriesVolumeViewer({ title, publisher, onClose }) {
                     padding: '12px',
                     alignItems: 'center',
                     gap: '12px',
-                    opacity: hasBook ? 1 : 0.65
+                    opacity: hasBook ? 1 : 0.65,
+                    cursor: 'pointer',
+                    transition: 'border-color 0.15s',
                   }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#718096'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#4a5568'; }}
                 >
                   {/* COVER PORTRAIT THUMBNAIL */}
                   <div style={{ 
                     width: '50px', 
                     height: '72px', 
-                    background: '#1a202c', 
+                    background: item.cover_status === 'cached'
+                      ? '#1a202c'
+                      : item.cover_status === 'pending'
+                        ? 'rgba(237, 137, 54, 0.15)'
+                        : hasBook
+                          ? 'rgba(56, 161, 105, 0.15)'
+                          : 'rgba(229, 62, 62, 0.15)',
                     borderRadius: '4px', 
                     overflow: 'hidden', 
                     display: 'flex', 
                     alignItems: 'center', 
                     justifyContent: 'center',
                     flexShrink: 0,
-                    border: hasBook ? '1px solid #4a5568' : '1px dashed #e53e3e'
+                    border: !hasBook && item.cover_status !== 'cached'
+                      ? '1px dashed #e53e3e'
+                      : '1px solid #4a5568'
                   }}>
-                    {hasBook && item.cover_image ? (
+                    {item.cover_image ? (
                       <img src={item.cover_image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : item.cover_status === 'pending' ? (
+                      <span style={{ fontSize: '14px', opacity: 0.6 }}>⏳</span>
                     ) : (
-                      <span style={{ fontSize: '16px', fontWeight: 'bold', color: hasBook ? '#718096' : '#e53e3e' }}>
-                        🕵️‍♂️
-                      </span>
+                      <ComicBubbleIcon size={18} color={hasBook ? '#48bb78' : '#fc8181'} />
                     )}
                   </div>
 
@@ -251,6 +345,26 @@ export default function SeriesVolumeViewer({ title, publisher, onClose }) {
         </div>
 
       </div>
+
+      {comicLoading && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          background: 'rgba(0,0,0,0.3)', zIndex: 10000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: '#fff', fontSize: '14px',
+        }}>
+          Loading comic details...
+        </div>
+      )}
+
+      {selectedComic && (
+        <ComicDetailModal
+          comic={selectedComic}
+          onClose={() => setSelectedComic(null)}
+          onViewSeries={(t, p) => { setSelectedComic(null); /* already viewing this series */ }}
+          onAddToPicklist={(item) => addToPicklist(item)}
+        />
+      )}
     </>
   );
 }

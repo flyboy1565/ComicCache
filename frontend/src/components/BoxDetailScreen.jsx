@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchBoxComics } from '../utilities/api';
 import ComicDetailModal from './ComicDetailModal';
+import ComicBubbleIcon from './ComicBubbleIcon';
 
 export default function BoxDetailScreen({ box, onBack, onViewSeries, onAddToPicklist }) {
   const [comics, setComics] = useState([]);
@@ -84,7 +85,7 @@ export default function BoxDetailScreen({ box, onBack, onViewSeries, onAddToPick
                 {comic.cover_image ? (
                   <img src={comic.cover_image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  <span style={{ fontSize: '16px' }}>📘</span>
+                  <ComicBubbleIcon size={16} color="#a0aec0" />
                 )}
               </div>
 

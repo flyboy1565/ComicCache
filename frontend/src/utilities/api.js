@@ -172,6 +172,22 @@ export async function resetPassword(userId) {
   return res.json();
 }
 
+export async function fetchComicDetail(comicId) {
+  const res = await fetch(`${API_BASE_URL}/comics/${comicId}`);
+  if (!res.ok) throw new Error('Failed to fetch comic detail');
+  return res.json();
+}
+
+export async function fetchCoverForIssue(title, issue_number, publisher) {
+  const res = await fetch(`${API_BASE_URL}/series/cover`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, issue_number, publisher }),
+  });
+  if (!res.ok) throw new Error('Failed to fetch cover for issue');
+  return res.json();
+}
+
 export async function fetchSeriesOverview(title, publisher) {
   const res = await fetch(`${API_BASE_URL}/series/overview?title=${encodeURIComponent(title)}&publisher=${encodeURIComponent(publisher)}`);
   if (!res.ok) throw new Error("Failed to load series historical run.");

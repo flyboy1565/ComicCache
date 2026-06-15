@@ -1,4 +1,5 @@
 import React from 'react';
+import ComicBubbleIcon from './ComicBubbleIcon';
 
 export default function ComicDetailModal({ comic, onClose, onViewSeries, onAddToPicklist }) {
   return (
@@ -35,18 +36,33 @@ export default function ComicDetailModal({ comic, onClose, onViewSeries, onAddTo
         </button>
 
         {/* Cover image */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px', position: 'relative' }}>
           <div style={{
             width: '140px', height: '200px', borderRadius: '8px', overflow: 'hidden',
-            background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: '1px solid #e2e8f0',
+            background: comic.cover_status === 'cached' ? '#e2e8f0'
+              : comic.cover_status === 'pending' ? 'rgba(237, 137, 54, 0.15)'
+              : '#fed7d7',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            border: comic.cover_status === 'not_found' ? '1px dashed #e53e3e' : '1px solid #e2e8f0',
           }}>
             {comic.cover_image ? (
               <img src={comic.cover_image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : comic.cover_status === 'pending' ? (
+              <span style={{ fontSize: '24px', opacity: 0.6 }}>⏳</span>
             ) : (
-              <span style={{ fontSize: '40px' }}>📘</span>
+              <ComicBubbleIcon size={40} color="#e53e3e" />
             )}
           </div>
+          {comic.cover_status && comic.cover_status !== 'cached' && (
+            <span style={{
+              position: 'absolute', bottom: '-4px', left: '50%', transform: 'translateX(-50%)',
+              fontSize: '10px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '4px',
+              background: comic.cover_status === 'pending' ? '#dd6b20' : '#e53e3e',
+              color: '#fff', whiteSpace: 'nowrap',
+            }}>
+              {comic.cover_status === 'pending' ? 'FETCHING' : 'NOT FOUND'}
+            </span>
+          )}
         </div>
 
         {/* Comic info */}
@@ -74,6 +90,17 @@ export default function ComicDetailModal({ comic, onClose, onViewSeries, onAddTo
             </div>
           )}
         </div>
+
+        {/* Interest count — shows for missing/not_found items */}
+        {comic.cover_status === 'not_found' && comic.interest_count > 0 && (
+          <div style={{
+            marginTop: '16px', padding: '10px 14px', borderRadius: '8px',
+            background: '#fef3c7', border: '1px solid #f59e0b',
+            fontSize: '13px', color: '#92400e', textAlign: 'center',
+          }}>
+            🔍 Requested <strong>{comic.interest_count}</strong> time{comic.interest_count !== 1 ? 's' : ''} — potential re-order opportunity
+          </div>
+        )}
 
         {/* Add to Picklist button */}
         <button
