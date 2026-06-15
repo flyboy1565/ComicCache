@@ -1,13 +1,14 @@
 import os
 import secrets
+import asyncio
 from datetime import datetime
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, SQLModel, select
 from dotenv import load_dotenv
 
 from database import init_db, get_session
-from models import Box, BoxCreate, Comic, ComicCreate, PicklistItem, PicklistItemCreate, User
+from models import Box, BoxCreate, Comic, ComicCreate, PicklistItem, PicklistItemCreate, User, CoverCache
 from schema import BatchScanPayload, ScanRequest
 from auth import create_access_token, get_current_user, hash_password, verify_password
 
@@ -20,7 +21,8 @@ from utils import (
     execute_hardcoded_failsafe,
     parse_five_digit_extension, 
     fetch_series_title_from_comic_db,
-    fetch_cover_from_fandom_wiki
+    fetch_cover_from_fandom_wiki,
+    discover_missing_comic_assets
 )
 
 load_dotenv()
@@ -38,6 +40,57 @@ app.add_middleware(
 @app.on_event("startup")
 def on_startup():
     init_db()
+
+# -----------------------------------------------------------------
+# COVER CACHE HELPERS
+# -----------------------------------------------------------------
+
+def upsert_cover_cache(session: Session, title: str, issue_number: str, publisher: str,
+                       cover_url: str or None, source: str or None, status: str):
+    existing = session.exec(
+        select(CoverCache).where(
+            CoverCache.series_title == title,
+            CoverCache.issue_number == issue_number,
+            CoverCache.publisher == publisher
+        )
+    ).first()
+    if existing:
+        existing.cover_url = cover_url
+        existing.source = source
+        existing.status = status
+        existing.updated_at = datetime.utcnow()
+        if cover_url:
+            existing.hit_count = (existing.hit_count or 1) + 1
+    else:
+        entry = CoverCache(
+            series_title=title,
+            issue_number=issue_number,
+            publisher=publisher,
+            cover_url=cover_url,
+            source=source,
+            status=status,
+            updated_at=datetime.utcnow()
+        )
+        session.add(entry)
+    session.commit()
+
+
+async def fill_cover_cache_background(items: list):
+    for title, issue, publisher in items:
+        try:
+            cover = await fetch_cover_from_fandom_wiki(title, issue, publisher)
+            source = "fandom_wiki" if cover else None
+            status = "cached" if cover else "not_found"
+
+            session = next(get_session())
+            try:
+                upsert_cover_cache(session, title, issue, publisher, cover, source, status)
+            finally:
+                session.close()
+        except Exception:
+            pass
+        await asyncio.sleep(1.5)
+
 
 # --- SCAN RESOLVER PIPELINE ---
 
@@ -83,8 +136,6 @@ async def process_comic_barcode(payload: ScanRequest, session: Session = Depends
     issue_number, variant_cover, printing = parse_five_digit_extension(extension)
     log_scan_diagnostic("Formula Parser", f"Decoded: Issue #{issue_number} | Cover: {variant_cover} | Printing: {printing}")
 
-    cover_image_fallback = None
-    
     # -----------------------------------------------------------------
     # LAYER 3: RESOLVE THE SERIES NAME & COVER IMAGE
     # -----------------------------------------------------------------
@@ -111,10 +162,13 @@ async def process_comic_barcode(payload: ScanRequest, session: Session = Depends
             publisher=publisher_name
         )
 
-    # Final static placeholder generation fallback if all else fails
+    # If Fandom Wiki didn't find a cover, try the free asset discovery pipeline
     if not cover_image_url:
-        clean_url_title = series_title.replace(' ', '+').replace(':', '') if series_title else "Unknown"
-        cover_image_url = f"https://via.placeholder.com/150x225?text={clean_url_title}+%23{issue_number}"
+        log_scan_diagnostic("Cover Pipeline", "Fandom wiki returned no cover. Trying Open Library / LibraryThing / GCD...")
+        discovered = await discover_missing_comic_assets(barcode_str)
+        if discovered:
+            cover_image_url = discovered["discovered_image"]
+            log_scan_diagnostic("Cover Pipeline", f"Cover found via {discovered['source']}!")
 
     if not series_title:
         series_title = "Unindexed Barcode Run"
@@ -146,7 +200,7 @@ async def process_comic_barcode(payload: ScanRequest, session: Session = Depends
         "title": full_display_title,
         "issue_number": issue_number,
         "publisher": publisher_name,
-        "cover_image": f"https://via.placeholder.com/150x225?text={series_title.replace(' ', '+')}+%23{issue_number}",
+        "cover_image": cover_image_url,
         "estimated_value": market_value
     }
 
@@ -161,6 +215,12 @@ async def process_comic_barcode(payload: ScanRequest, session: Session = Depends
         session.add(new_comic)
         session.commit()
         session.refresh(new_comic)
+
+        if cover_image_url:
+            upsert_cover_cache(
+                session, full_display_title, issue_number, publisher_name,
+                cover_image_url, "scan_pipeline", "cached"
+            )
         
         log_scan_diagnostic("Pipeline End", f"Successfully Stored! Created Record ID: {new_comic.id}")
         print("═"*70 + "\n")
@@ -193,7 +253,7 @@ async def handle_incoming_scan(payload: ComicCreate, session: Session = Depends(
     if market_value == 0.0:
         market_value = await fetch_live_market_value(payload.title, payload.issue_number)
 
-    cover_url = payload.cover_image or f"https://via.placeholder.com/150x225?text={payload.title.replace(' ', '+')}"
+    cover_url = payload.cover_image
 
     db_comic = Comic(
         barcode=payload.barcode,
@@ -209,6 +269,13 @@ async def handle_incoming_scan(payload: ComicCreate, session: Session = Depends(
     session.add(db_comic)
     session.commit()
     session.refresh(db_comic)
+
+    if cover_url:
+        upsert_cover_cache(
+            session, payload.title, payload.issue_number, payload.publisher,
+            cover_url, "manual_scan", "cached"
+        )
+
     return {"status": "success", "data": db_comic}
 
 
@@ -294,6 +361,113 @@ def get_box_comics(box_id: int, session: Session = Depends(get_session)):
         for c in comics
     ]
 
+
+# --- COMIC DETAIL ENDPOINT ---
+
+@app.get("/api/v1/comics/{comic_id}")
+async def get_comic_detail(comic_id: int, session: Session = Depends(get_session)):
+    comic = session.get(Comic, comic_id)
+    if not comic:
+        raise HTTPException(status_code=404, detail="Comic not found")
+
+    cover_image = comic.cover_image
+    cover_status = "cached" if cover_image else "not_found"
+
+    if not cover_image:
+        cache = session.exec(
+            select(CoverCache).where(
+                CoverCache.series_title == comic.title,
+                CoverCache.issue_number == comic.issue_number,
+                CoverCache.publisher == comic.publisher
+            )
+        ).first()
+        if cache and cache.cover_url:
+            cover_image = cache.cover_url
+            cover_status = cache.status
+        else:
+            cover_url = await fetch_cover_from_fandom_wiki(comic.title, comic.issue_number, comic.publisher)
+            if cover_url:
+                cover_image = cover_url
+                cover_status = "cached"
+                upsert_cover_cache(session, comic.title, comic.issue_number, comic.publisher, cover_url, "fandom_wiki", "cached")
+            else:
+                upsert_cover_cache(session, comic.title, comic.issue_number, comic.publisher, None, None, "not_found")
+
+    return {
+        "id": comic.id,
+        "barcode": comic.barcode,
+        "title": comic.title,
+        "issue_number": comic.issue_number,
+        "publisher": comic.publisher,
+        "writer": comic.writer,
+        "penciler": comic.penciler,
+        "keywords": comic.keywords,
+        "cover_image": cover_image,
+        "cover_status": cover_status,
+        "estimated_value": comic.estimated_value,
+        "purchase_cost": comic.purchase_cost,
+        "date_scanned": comic.date_scanned.isoformat() if comic.date_scanned else None,
+        "box_name": comic.box.name if comic.box else None,
+        "box_location": comic.box.location if comic.box else None,
+    }
+
+
+# --- COVER LOOKUP ENDPOINT ---
+
+class CoverLookupRequest(SQLModel):
+    title: str
+    issue_number: str
+    publisher: str
+
+@app.post("/api/v1/series/cover")
+async def get_cover_for_issue(body: CoverLookupRequest, session: Session = Depends(get_session)):
+    existing = session.exec(
+        select(CoverCache).where(
+            CoverCache.series_title == body.title,
+            CoverCache.issue_number == body.issue_number,
+            CoverCache.publisher == body.publisher
+        )
+    ).first()
+
+    if existing and existing.cover_url:
+        existing.hit_count = (existing.hit_count or 1) + 1
+        session.commit()
+        return {
+            "cover_url": existing.cover_url,
+            "cover_status": existing.status,
+            "interest_count": existing.hit_count
+        }
+
+    cover = await fetch_cover_from_fandom_wiki(body.title, body.issue_number, body.publisher)
+    source = "fandom_wiki" if cover else None
+    status = "cached" if cover else "not_found"
+
+    if existing:
+        existing.cover_url = cover
+        existing.source = source
+        existing.status = status
+        existing.updated_at = datetime.utcnow()
+        existing.hit_count = (existing.hit_count or 1) + 1
+    else:
+        entry = CoverCache(
+            series_title=body.title,
+            issue_number=body.issue_number,
+            publisher=body.publisher,
+            cover_url=cover,
+            source=source,
+            status=status,
+            updated_at=datetime.utcnow()
+        )
+        session.add(entry)
+        session.flush()
+        existing = entry
+
+    session.commit()
+    return {
+        "cover_url": cover,
+        "cover_status": status,
+        "interest_count": existing.hit_count
+    }
 
 # --- AUTH ENDPOINTS ---
 
@@ -512,7 +686,11 @@ async def handle_batch_scan(payload: BatchScanPayload, session: Session = Depend
 
 
 @app.get("/api/v1/series/overview")
-def get_series_overview(title: str, publisher: str, session: Session = Depends(get_session)):
+async def get_series_overview(
+    title: str, publisher: str,
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session)
+):
     if not title:
         raise HTTPException(status_code=400, detail="Title parameter required")
         
@@ -529,11 +707,37 @@ def get_series_overview(title: str, publisher: str, session: Session = Depends(g
             except ValueError: 
                 pass
         official_numbers = [str(i) for i in range(1, max_issue + 1)]
-            
+
+    # Load all cover cache entries for this series in one query
+    cache_entries = {}
+    cache_rows = session.exec(
+        select(CoverCache).where(
+            CoverCache.series_title == title,
+            CoverCache.publisher == publisher
+        )
+    ).all()
+    for row in cache_rows:
+        cache_entries[row.issue_number] = row
+
     timeline_items = []
+    pending_fill = []
+
     for issue_str in official_numbers:
+        cache = cache_entries.get(issue_str)
+        cover_url = None
+        cover_status = "pending"
+
         if issue_str in owned_map:
             comic = owned_map[issue_str]
+            if comic.cover_image:
+                cover_url = comic.cover_image
+                cover_status = "cached"
+            elif cache and cache.cover_url:
+                cover_url = cache.cover_url
+                cover_status = cache.status
+            else:
+                pending_fill.append((title, issue_str, publisher))
+
             timeline_items.append({
                 "issue_number": issue_str,
                 "status": "in_stock",
@@ -541,9 +745,19 @@ def get_series_overview(title: str, publisher: str, session: Session = Depends(g
                 "estimated_value": comic.estimated_value,
                 "box_name": comic.box.name,
                 "box_location": comic.box.location,
-                "cover_image": comic.cover_image or "https://via.placeholder.com/130x180?text=No+Cover"
+                "cover_image": cover_url,
+                "cover_status": cover_status,
+                "interest_count": cache.hit_count if cache else 0
             })
         else:
+            if cache and cache.cover_url:
+                cover_url = cache.cover_url
+                cover_status = cache.status
+            elif cache and cache.status == "not_found":
+                cover_status = "not_found"
+            else:
+                cover_status = "not_found"
+
             timeline_items.append({
                 "issue_number": issue_str,
                 "status": "missing",
@@ -551,14 +765,48 @@ def get_series_overview(title: str, publisher: str, session: Session = Depends(g
                 "estimated_value": 0.00,
                 "box_name": "Not In Vault",
                 "box_location": None,
-                "cover_image": "https://via.placeholder.com/130x180?text=Missing"
+                "cover_image": cover_url,
+                "cover_status": cover_status,
+                "interest_count": cache.hit_count if cache else 0
             })
-            
+
+    # Synchronously fill the first 3 pending covers for OWNED issues only
+    sync_batch = pending_fill[:3]
+    for s_title, s_issue, s_publisher in sync_batch:
+        try:
+            cover = await fetch_cover_from_fandom_wiki(s_title, s_issue, s_publisher)
+            source = "fandom_wiki" if cover else None
+            s_status = "cached" if cover else "not_found"
+            upsert_cover_cache(session, s_title, s_issue, s_publisher, cover, source, s_status)
+            # Update the timeline item in-place
+            for item in timeline_items:
+                if item["issue_number"] == s_issue:
+                    item["cover_image"] = cover
+                    item["cover_status"] = s_status
+                    break
+        except Exception:
+            pass
+
+    # Fire background task for remaining owned issues
+    remaining = pending_fill[3:]
+    if remaining:
+        background_tasks.add_task(fill_cover_cache_background, remaining)
+
+    # Count cover gathering stats
+    cached_count = sum(1 for t in timeline_items if t["cover_status"] == "cached")
+    pending_count = sum(1 for t in timeline_items if t["cover_status"] == "pending")
+    not_found_count = sum(1 for t in timeline_items if t["cover_status"] == "not_found")
+
     return {
         "series_title": title,
         "publisher": publisher,
         "total_owned": len(owned_comics),
         "total_missing": len(official_numbers) - len(owned_comics),
         "total_series_value": round(sum(c.estimated_value for c in owned_comics), 2),
+        "cover_gathering": {
+            "cached": cached_count,
+            "pending": pending_count,
+            "not_found": not_found_count
+        },
         "timeline": timeline_items
     }

@@ -5,6 +5,8 @@ import httpx
 import requests
 import urllib.parse
 
+from curl_cffi.requests import AsyncSession
+
 from bs4 import BeautifulSoup
 
 # Helper framework to print diagnostic blocks to terminal console
@@ -77,7 +79,7 @@ async def query_comicvine_metadata(barcode_str: str) -> dict or None:
                 return {
                     "title": title,
                     "issue_number": issue_num,
-                    "cover_image": image_info.get("thumb_url") or "https://via.placeholder.com/150x225?text=Cover",
+                    "cover_image": image_info.get("thumb_url"),
                     "estimated_value": market_value
                 }
             log_scan_diagnostic("ComicVine API", f"Zero indexing responses mapped for sequence target [{barcode_str}]")
@@ -93,7 +95,7 @@ def execute_hardcoded_failsafe(barcode_str: str) -> dict:
             "title": "DC X Sonic The Hedgehog: The Metal Legion",
             "issue_number": "1",
             "publisher": "DC Comics",
-            "cover_image": "https://via.placeholder.com/150x225?text=Sonic+Metal+Legion",
+            "cover_image": None,
             "estimated_value": 4.99
         }
     
@@ -102,7 +104,7 @@ def execute_hardcoded_failsafe(barcode_str: str) -> dict:
         "title": "Unindexed Barcode Item",
         "issue_number": "1",
         "publisher": "Unknown Publisher",
-        "cover_image": "https://via.placeholder.com/150x225?text=Unknown+Item",
+        "cover_image": None,
         "estimated_value": 3.99
     }
 
@@ -160,6 +162,57 @@ async def fetch_series_title_from_upc(upc_12: str) -> str or None:
             log_scan_diagnostic("UPC Search", f"UPC index lookup error: {e}", is_error=True)
     return None    
 
+
+
+async def fetch_cover_from_gcd(barcode_str: str) -> str or None:
+    """
+    Searches the Grand Comics Database for a barcode match, then extracts
+    the og:image cover URL from the issue detail page.
+    """
+    upc_root = barcode_str[:12]
+    search_variants = [upc_root, f"0{upc_root}"]
+    headers = {"User-Agent": "ComicLabScanner/1.0 (HomeLab Inventory Project)"}
+
+    async with httpx.AsyncClient(headers=headers, follow_redirects=True) as client:
+        for query_string in search_variants:
+            url = "https://www.comics.org/search/comic/"
+            params = {"q": query_string, "object_filter": "issue"}
+
+            try:
+                response = await client.get(url, params=params, timeout=6.0)
+                if response.status_code != 200:
+                    continue
+
+                # Determine if we landed on an issue detail page or search results
+                final_url = str(response.url)
+                soup = BeautifulSoup(response.text, 'html.parser')
+
+                issue_url = None
+                if "/issue/" in final_url:
+                    issue_url = final_url
+                else:
+                    first_link = soup.find("a", href=lambda x: x and "/issue/" in x)
+                    if first_link:
+                        issue_url = "https://www.comics.org" + first_link["href"]
+
+                if not issue_url:
+                    continue
+
+                # Fetch the issue page to extract og:image
+                issue_resp = await client.get(issue_url, timeout=6.0)
+                if issue_resp.status_code != 200:
+                    continue
+
+                issue_soup = BeautifulSoup(issue_resp.text, 'html.parser')
+                og_image = issue_soup.find("meta", property="og:image")
+                if og_image and og_image.get("content"):
+                    log_scan_diagnostic("GCD Cover", "🎯 GCD Issue Cover Image Located!")
+                    return og_image["content"]
+
+            except Exception as e:
+                log_scan_diagnostic("GCD Cover", f"GCD cover lookup error: {e}", is_error=True)
+
+    return None
 
 
 async def discover_missing_comic_assets(barcode_str: str) -> dict or None:
@@ -227,6 +280,21 @@ async def discover_missing_comic_assets(barcode_str: str) -> dict or None:
         except Exception as e:
             log_scan_diagnostic("Asset Engine", f"LibraryThing step bypassed: {e}")
 
+        # -----------------------------------------------------------------
+        # LAYER 3: GRAND COMICS DATABASE COVER SCRAPE
+        # -----------------------------------------------------------------
+        log_scan_diagnostic("Asset Engine", f"Checking GCD for cover art via barcode: {barcode_str}")
+        try:
+            gcd_cover = await fetch_cover_from_gcd(barcode_str)
+            if gcd_cover:
+                log_scan_diagnostic("Asset Engine", "🎯 GCD Cover Image Located!")
+                return {
+                    "discovered_image": gcd_cover,
+                    "source": "Grand Comics Database"
+                }
+        except Exception as e:
+            log_scan_diagnostic("Asset Engine", f"GCD cover step bypassed: {e}")
+
     return None
     
 
@@ -239,8 +307,8 @@ async def fetch_cover_from_fandom_wiki(series_title: str, issue_num: str, publis
     pub_lower = publisher.lower()
     base_url = "https://marvel.fandom.com/wiki" if "marvel" in pub_lower else "https://dc.fandom.com/wiki"
     
-    # Strip colons, dashes, and handle clean spacing underscore conversions
-    clean_title = series_title.replace(":", "").replace("-", " ")
+    # Strip leading "The " and colons, preserve dashes (Fandom uses them)
+    clean_title = re.sub(r'^The\s+', '', series_title, flags=re.IGNORECASE).replace(":", "")
     formatted_title = "_".join(clean_title.split())
     
     # Build our two common URL strategies
@@ -249,13 +317,11 @@ async def fetch_cover_from_fandom_wiki(series_title: str, issue_num: str, publis
         f"{base_url}/{formatted_title}_Vol_1_{issue_num}"   # Legacy Fallback
     ]
     
-    headers = {"User-Agent": "ComicLabScanner/1.0 (HomeLab Project)"}
-    
-    async with httpx.AsyncClient(headers=headers) as client:
+    async with AsyncSession() as client:
         for target_url in url_variants:
             log_scan_diagnostic("Fandom Engine", f"Testing Wiki target: {target_url}")
             try:
-                response = await client.get(target_url, timeout=5.0)
+                response = await client.get(target_url, impersonate="chrome120", timeout=15.0)
                 if response.status_code == 200:
                     soup = BeautifulSoup(response.text, 'html.parser')
                     og_image = soup.find("meta", property="og:image")

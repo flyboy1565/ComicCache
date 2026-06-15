@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
-from sqlmodel import Field, Relationship, SQLModel
+from sqlmodel import Field, Relationship, SQLModel, UniqueConstraint
 
 class BoxBase(SQLModel):
     name: str          # e.g., "Marvel Longbox A"
@@ -66,3 +66,18 @@ class PicklistItem(PicklistItemBase, table=True):
 
 class PicklistItemCreate(PicklistItemBase):
     pass
+
+
+class CoverCache(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    series_title: str = Field(index=True)
+    issue_number: str = Field(index=True)
+    publisher: str = Field(default="")
+    cover_url: Optional[str] = None
+    source: Optional[str] = None
+    status: str = Field(default="pending")
+    hit_count: int = Field(default=1)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    __table_args__ = (
+        UniqueConstraint("series_title", "issue_number", "publisher", name="uq_series_issue_publisher"),
+    )
