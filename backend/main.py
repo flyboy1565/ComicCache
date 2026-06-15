@@ -1,13 +1,15 @@
 import os
+import secrets
 from datetime import datetime
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from sqlmodel import Session, select
+from sqlmodel import Session, SQLModel, select
 from dotenv import load_dotenv
 
 from database import init_db, get_session
-from models import Box, BoxCreate, Comic, ComicCreate, PicklistItem, PicklistItemCreate
+from models import Box, BoxCreate, Comic, ComicCreate, PicklistItem, PicklistItemCreate, User
 from schema import BatchScanPayload, ScanRequest
+from auth import create_access_token, get_current_user, hash_password, verify_password
 
 # Import our utility engine functions
 from utils import (
@@ -293,17 +295,120 @@ def get_box_comics(box_id: int, session: Session = Depends(get_session)):
     ]
 
 
+# --- AUTH ENDPOINTS ---
+
+class LoginRequest(SQLModel):
+    username: str
+    password: str
+
+class RegisterRequest(SQLModel):
+    username: str
+
+class ChangePasswordRequest(SQLModel):
+    current_password: str
+    new_password: str
+
+class ResetPasswordRequest(SQLModel):
+    user_id: int
+
+
+@app.post("/api/v1/auth/login")
+def login(payload: LoginRequest, session: Session = Depends(get_session)):
+    user = session.exec(select(User).where(User.username == payload.username)).first()
+    if not user or not verify_password(payload.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    if not user.is_active:
+        raise HTTPException(status_code=401, detail="Account is disabled")
+    token = create_access_token({"sub": user.id})
+    result = {
+        "access_token": token,
+        "token_type": "bearer",
+        "password_change_required": user.must_change_password,
+        "user": {"id": user.id, "username": user.username, "email": user.email, "role": user.role, "must_change_password": user.must_change_password},
+    }
+    return result
+
+
+@app.post("/api/v1/auth/register")
+def register(payload: RegisterRequest, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    existing = session.exec(select(User).where(User.username == payload.username)).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Username already taken")
+    temp_password = secrets.token_urlsafe(12)
+    user = User(
+        username=payload.username,
+        email=f"{payload.username}@comiccache.local",
+        password_hash=hash_password(temp_password),
+        must_change_password=True,
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    print(f"📧 To {user.email}: Your temporary password is: {temp_password}")
+    return {"id": user.id, "username": user.username, "email": user.email, "role": user.role}
+
+
+@app.get("/api/v1/auth/me")
+def me(current_user: User = Depends(get_current_user)):
+    return {"id": current_user.id, "username": current_user.username, "email": current_user.email, "role": current_user.role, "must_change_password": current_user.must_change_password}
+
+
+@app.get("/api/v1/auth/users")
+def list_users(session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    users = session.exec(select(User).where(User.role != "admin")).all()
+    return [{"id": u.id, "username": u.username, "email": u.email, "role": u.role, "must_change_password": u.must_change_password} for u in users]
+
+
+@app.post("/api/v1/auth/change-password")
+def change_password(payload: ChangePasswordRequest, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    if not verify_password(payload.current_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    if len(payload.new_password) < 4:
+        raise HTTPException(status_code=400, detail="New password must be at least 4 characters")
+    current_user.password_hash = hash_password(payload.new_password)
+    current_user.must_change_password = False
+    session.add(current_user)
+    session.commit()
+    return {"message": "Password changed successfully"}
+
+
+@app.post("/api/v1/auth/reset-password")
+def reset_password(payload: ResetPasswordRequest, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    target = session.get(User, payload.user_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    temp_password = secrets.token_urlsafe(12)
+    target.password_hash = hash_password(temp_password)
+    target.must_change_password = True
+    session.add(target)
+    session.commit()
+    print(f"📧 To {target.email}: Your password has been reset. Temporary password: {temp_password}")
+    return {"message": f"Password reset email sent to {target.email}"}
+
+
 # --- PICKLIST ENDPOINTS ---
 
 @app.get("/api/v1/picklist")
-def read_picklist(session: Session = Depends(get_session)):
-    statement = select(PicklistItem).order_by(PicklistItem.date_added.desc())
+def read_picklist(session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    statement = select(PicklistItem).where(PicklistItem.user_id == current_user.id).order_by(PicklistItem.date_added.desc())
     return session.exec(statement).all()
 
 
 @app.post("/api/v1/picklist", response_model=PicklistItem)
-def create_picklist_item(item: PicklistItemCreate, session: Session = Depends(get_session)):
-    db_item = PicklistItem.from_orm(item)
+def create_picklist_item(item: PicklistItemCreate, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    db_item = PicklistItem(
+        title=item.title,
+        issue_number=item.issue_number,
+        publisher=item.publisher,
+        notes=item.notes,
+        user_id=current_user.id,
+    )
     session.add(db_item)
     session.commit()
     session.refresh(db_item)
@@ -311,8 +416,8 @@ def create_picklist_item(item: PicklistItemCreate, session: Session = Depends(ge
 
 
 @app.patch("/api/v1/picklist/{item_id}", response_model=PicklistItem)
-def update_picklist_item(item_id: int, payload: dict, session: Session = Depends(get_session)):
-    db_item = session.get(PicklistItem, item_id)
+def update_picklist_item(item_id: int, payload: dict, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    db_item = session.exec(select(PicklistItem).where(PicklistItem.id == item_id, PicklistItem.user_id == current_user.id)).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Picklist item not found")
     for key, value in payload.items():
@@ -324,8 +429,8 @@ def update_picklist_item(item_id: int, payload: dict, session: Session = Depends
 
 
 @app.delete("/api/v1/picklist/{item_id}")
-def delete_picklist_item(item_id: int, session: Session = Depends(get_session)):
-    db_item = session.get(PicklistItem, item_id)
+def delete_picklist_item(item_id: int, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    db_item = session.exec(select(PicklistItem).where(PicklistItem.id == item_id, PicklistItem.user_id == current_user.id)).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Picklist item not found")
     session.delete(db_item)
@@ -334,9 +439,8 @@ def delete_picklist_item(item_id: int, session: Session = Depends(get_session)):
 
 
 @app.delete("/api/v1/picklist")
-def clear_picklist(session: Session = Depends(get_session)):
-    session.exec(select(PicklistItem)).all()
-    statement = select(PicklistItem)
+def clear_picklist(session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    statement = select(PicklistItem).where(PicklistItem.user_id == current_user.id)
     for item in session.exec(statement).all():
         session.delete(item)
     session.commit()

@@ -1,10 +1,16 @@
 // src/screens/DashboardScreen.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import ComicScanner from '../components/ComicScanner';
+import BoxDetailScreen from '../components/BoxDetailScreen';
+import PicklistDrawer from '../components/PicklistDrawer';
+import Toast from '../components/Toast';
 import SeriesVolumeViewer from '../components/SeriesVolumeViewer';
-import { fetchBoxes, fetchValuation, createBox, searchComics } from '../utilities/api';
+import UserMenu from '../components/UserMenu';
+import RegisterScreen from '../screens/RegisterScreen';
+import AdminScreen from '../screens/AdminScreen';
+import { fetchBoxes, fetchValuation, createBox, searchComics, addToPicklist } from '../utilities/api';
 
-export default function DashboardScreen() {
+export default function DashboardScreen({ user, onLogout }) {
   const [boxes, setBoxes] = useState([]);
   const [selectedBoxId, setSelectedBoxId] = useState('');
   const [boxValuations, setBoxValuations] = useState({});
@@ -14,6 +20,40 @@ export default function DashboardScreen() {
   const [isNewBoxFormOpen, setIsNewBoxFormOpen] = useState(false);
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+
+  // Page Navigation state
+  const [currentView, setCurrentView] = useState('dashboard');
+  const [selectedBoxForDetail, setSelectedBoxForDetail] = useState(null);
+
+  // Toast state
+  const [toast, setToast] = useState(null);
+
+  const showToast = useCallback((message, type = 'success') => {
+    setToast({ message, type });
+  }, []);
+
+  const handleAddStaff = () => setCurrentView('register');
+  const handleManageStaff = () => setCurrentView('admin');
+
+  const handleRegistered = (username) => {
+    setCurrentView('dashboard');
+    showToast(`Account "${username}" created`);
+  };
+
+  const handleCancelRegister = () => setCurrentView('dashboard');
+
+  // Picklist state
+  const [isPicklistOpen, setIsPicklistOpen] = useState(false);
+
+  const handleAddToPicklist = async (item) => {
+    try {
+      await addToPicklist(item);
+      showToast('Added to picklist!');
+    } catch (e) {
+      console.error("Failed to add to picklist:", e);
+      showToast('Failed to add to picklist', 'error');
+    }
+  };
 
   // Right Drawer Side-Panel Context
   const [activeSeriesFocus, setActiveSeriesFocus] = useState(null);
@@ -82,13 +122,57 @@ export default function DashboardScreen() {
   const globalMarketValue = Object.values(boxValuations).reduce((acc, curr) => acc + (curr?.financials?.total_estimated_retail_value || 0), 0);
 
   return (
-    <div style={{ fontFamily: 'sans-serif', maxWidth: '600px', margin: '0 auto', padding: '15px', paddingBottom: '80px' }}>
+    <div style={{ fontFamily: 'sans-serif', maxWidth: '600px', margin: '0 auto', padding: '15px' }}>
       
       {/* HEADER DECK */}
-      <header style={{ paddingBottom: '15px', marginBottom: '20px', borderBottom: '1px solid #e2e8f0' }}>
-        <h1 style={{ margin: 0, color: '#e53e3e', fontSize: '26px' }}>⚡ ComicCache </h1>
-        <p style={{ margin: '5px 0 0 0', fontSize: '14px', color: '#718096' }}> Store Collection </p>
+      <header style={{ paddingBottom: '15px', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h1 style={{ margin: 0, color: '#e53e3e', fontSize: '26px' }}>⚡ ComicCache </h1>
+          <p style={{ margin: '5px 0 0 0', fontSize: '14px', color: '#718096' }}> Store Collection </p>
+        </div>
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+          <button
+            onClick={() => setIsScannerOpen(true)}
+            style={{
+              background: '#e53e3e', border: 'none', borderRadius: '8px',
+              padding: '8px 14px', fontSize: '14px', cursor: 'pointer',
+              fontWeight: 'bold', color: '#fff',
+            }}
+          >
+            ➕ Scan
+          </button>
+          <button
+            onClick={() => setIsPicklistOpen(true)}
+            style={{
+              background: '#faf5ff', border: 'none', borderRadius: '8px',
+              padding: '8px 12px', fontSize: '14px', cursor: 'pointer',
+              fontWeight: 'bold', color: '#805ad5',
+            }}
+          >
+            📋 Picklist
+          </button>
+          {user && <UserMenu user={user} onLogout={onLogout} onAddStaff={handleAddStaff} onNavigate={handleManageStaff} />}
+        </div>
       </header>
+
+      {/* PAGE NAVIGATION: show dashboard content, box detail, register, or admin page */}
+      {currentView === 'register' ? (
+        <RegisterScreen onRegistered={handleRegistered} onCancel={handleCancelRegister} />
+      ) : currentView === 'admin' ? (
+        <AdminScreen onBack={() => setCurrentView('dashboard')} />
+      ) : currentView === 'box-detail' && selectedBoxForDetail ? (
+        <BoxDetailScreen
+          box={selectedBoxForDetail}
+          onBack={() => setCurrentView('dashboard')}
+          onViewSeries={(title, publisher) => setActiveSeriesFocus({ title, publisher })}
+          onAddToPicklist={handleAddToPicklist}
+        />
+      ) : (
+        <></>
+      )}
+
+      {currentView === 'dashboard' && (
+      <>
 
       {/* GLOBAL MASTER CATALOG SEARCH INPUT */}
       <section style={{ marginBottom: '25px' }}>
@@ -203,7 +287,13 @@ export default function DashboardScreen() {
           {boxes.map(box => {
             const metrics = boxValuations[box.id];
             return (
-              <div key={box.id} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '15px', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div
+                key={box.id}
+                onClick={() => { setCurrentView('box-detail'); setSelectedBoxForDetail(box); }}
+                style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '15px', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', transition: 'background 0.2s ease' }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
+              >
                 <div>
                   <h4 style={{ margin: '0 0 4px 0', color: '#2d3748' }}>{box.name}</h4>
                   <span style={{ background: '#edf2f7', color: '#4a5568', padding: '3px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>📍 {box.location}</span>
@@ -220,15 +310,10 @@ export default function DashboardScreen() {
         </div>
       </section>
 
-      {/* STICKY BOTTOM ACTIONS FOOTER LAYER */}
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', borderTop: '1px solid #e2e8f0', padding: '12px 20px', display: 'flex', justifyContent: 'center', boxShadow: '0 -4px 6px -1px rgba(0,0,0,0.05)', zIndex: 100 }}>
-        <button 
-          onClick={() => setIsScannerOpen(true)}
-          style={{ width: '100%', maxWidth: '500px', background: '#e53e3e', color: '#fff', border: 'none', padding: '14px', borderRadius: '8px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 6px rgba(229, 62, 62, 0.2)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
-        >
-          ➕ INTAKE BATCH SCAN PROCESSOR
-        </button>
-      </div>
+      </>
+      )}
+
+
 
       {/* FULL SCREEN FOCUSED BATCH INTAKE OVERLAY VIEWPORT */}
       {isScannerOpen && (
@@ -268,6 +353,16 @@ export default function DashboardScreen() {
             )}
           </div>
         </div>
+      )}
+
+      {/* PICKLIST DRAWER OVERLAY */}
+      {isPicklistOpen && (
+        <PicklistDrawer onClose={() => setIsPicklistOpen(false)} showToast={showToast} />
+      )}
+
+      {/* TOAST NOTIFICATION */}
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
 
       {/* GLOBAL APPARITION OF THE SIDE PANEL CHECKLIST DRAWER OVERLAY */}

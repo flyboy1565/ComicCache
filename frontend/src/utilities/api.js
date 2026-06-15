@@ -1,6 +1,72 @@
 // src/utilities/api.js
 const API_BASE_URL = 'http://127.0.0.1:8001/api/v1';
 
+export function getToken() {
+  return localStorage.getItem('comiccache_token');
+}
+
+export function setToken(token) {
+  localStorage.setItem('comiccache_token', token);
+}
+
+export function clearToken() {
+  localStorage.removeItem('comiccache_token');
+}
+
+async function authFetch(url, options = {}) {
+  const token = getToken();
+  const headers = { ...options.headers };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  if (!headers['Content-Type'] && !(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+  const res = await fetch(url, { ...options, headers });
+  if (res.status === 401) {
+    clearToken();
+    window.location.reload();
+  }
+  return res;
+}
+
+export async function login(username, password) {
+  const res = await fetch(`${API_BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || "Login failed");
+  }
+  return res.json();
+}
+
+export async function register(username) {
+  const res = await authFetch(`${API_BASE_URL}/auth/register`, {
+    method: 'POST',
+    body: JSON.stringify({ username }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || "Registration failed");
+  }
+  return res.json();
+}
+
+export async function fetchMe() {
+  const res = await authFetch(`${API_BASE_URL}/auth/me`);
+  if (!res.ok) throw new Error("Failed to fetch user");
+  return res.json();
+}
+
+export async function fetchUsers() {
+  const res = await authFetch(`${API_BASE_URL}/auth/users`);
+  if (!res.ok) throw new Error("Failed to fetch users");
+  return res.json();
+}
+
 export async function fetchBoxes() {
   const res = await fetch(`${API_BASE_URL}/boxes`);
   if (!res.ok) throw new Error("Failed to pull longbox indices.");
@@ -24,7 +90,6 @@ export async function fetchValuation(boxId) {
 }
 
 export async function postBarcodeScan(payload) {
-  console.log
   const response = await fetch(`${API_BASE_URL}/scan/process-barcode`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -38,6 +103,72 @@ export async function postBarcodeScan(payload) {
 export async function searchComics(query) {
   const res = await fetch(`${API_BASE_URL}/comics/search?query=${encodeURIComponent(query)}`);
   if (!res.ok) throw new Error("Search execution pipeline failure.");
+  return res.json();
+}
+
+export async function fetchBoxComics(boxId) {
+  const res = await fetch(`${API_BASE_URL}/boxes/${boxId}/comics`);
+  if (!res.ok) throw new Error("Failed to load box inventory.");
+  return res.json();
+}
+
+export async function fetchPicklist() {
+  const res = await authFetch(`${API_BASE_URL}/picklist`);
+  if (!res.ok) throw new Error("Failed to load picklist.");
+  return res.json();
+}
+
+export async function addToPicklist(item) {
+  const res = await authFetch(`${API_BASE_URL}/picklist`, {
+    method: 'POST',
+    body: JSON.stringify(item),
+  });
+  if (!res.ok) throw new Error("Failed to add to picklist.");
+  return res.json();
+}
+
+export async function removeFromPicklist(id) {
+  const res = await authFetch(`${API_BASE_URL}/picklist/${id}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error("Failed to remove from picklist.");
+  return res.json();
+}
+
+export async function clearPicklist() {
+  const res = await authFetch(`${API_BASE_URL}/picklist`, { method: 'DELETE' });
+  if (!res.ok) throw new Error("Failed to clear picklist.");
+  return res.json();
+}
+
+export async function updatePicklistItem(id, data) {
+  const res = await authFetch(`${API_BASE_URL}/picklist/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to update picklist item.");
+  return res.json();
+}
+
+export async function changePassword(currentPassword, newPassword) {
+  const res = await authFetch(`${API_BASE_URL}/auth/change-password`, {
+    method: 'POST',
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || "Failed to change password");
+  }
+  return res.json();
+}
+
+export async function resetPassword(userId) {
+  const res = await authFetch(`${API_BASE_URL}/auth/reset-password`, {
+    method: 'POST',
+    body: JSON.stringify({ user_id: userId }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || "Failed to reset password");
+  }
   return res.json();
 }
 

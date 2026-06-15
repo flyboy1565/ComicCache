@@ -1,7 +1,8 @@
 from sqlmodel import Session, SQLModel, create_engine
 from datetime import datetime, timedelta
 from database import engine
-from models import Box, Comic
+from models import Box, Comic, User
+from auth import hash_password
 
 def seed_database():
     # Clear and recreate tables
@@ -63,6 +64,15 @@ def seed_database():
         ]
         
         session.add_all(comics)
+
+        print("Seeding admin user...")
+        admin = User(
+            username="admin",
+            email="admin@comiccache.local",
+            password_hash=hash_password("admin"),
+            role="admin",
+        )
+        session.add(admin)
         session.commit()
         print("Database successfully seeded with commercial testing profiles!")
 

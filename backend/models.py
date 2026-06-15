@@ -39,6 +39,17 @@ class ComicCreate(ComicBase):
     box_id: int
 
 
+class User(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    username: str = Field(unique=True, index=True)
+    email: str = Field(unique=True, index=True)
+    password_hash: str
+    role: str = Field(default="staff")
+    is_active: bool = Field(default=True)
+    must_change_password: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class PicklistItemBase(SQLModel):
     title: str
     issue_number: str
@@ -50,6 +61,7 @@ class PicklistItem(PicklistItemBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     date_added: datetime = Field(default_factory=datetime.utcnow)
     status: str = Field(default="pending")
+    user_id: int = Field(foreign_key="user.id")
 
 
 class PicklistItemCreate(PicklistItemBase):
