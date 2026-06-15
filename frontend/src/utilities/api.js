@@ -43,10 +43,10 @@ export async function login(username, password) {
   return res.json();
 }
 
-export async function register(username) {
+export async function register(username, roleId) {
   const res = await authFetch(`${API_BASE_URL}/auth/register`, {
     method: 'POST',
-    body: JSON.stringify({ username }),
+    body: JSON.stringify({ username, role_id: roleId || 5 }),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -191,5 +191,77 @@ export async function fetchCoverForIssue(title, issue_number, publisher) {
 export async function fetchSeriesOverview(title, publisher) {
   const res = await fetch(`${API_BASE_URL}/series/overview?title=${encodeURIComponent(title)}&publisher=${encodeURIComponent(publisher)}`);
   if (!res.ok) throw new Error("Failed to load series historical run.");
+  return res.json();
+}
+
+// --- ROLE MANAGEMENT API ---
+
+export async function fetchRoles() {
+  const res = await authFetch(`${API_BASE_URL}/auth/roles`);
+  if (!res.ok) throw new Error("Failed to fetch roles");
+  return res.json();
+}
+
+export async function createRole(roleData) {
+  const res = await authFetch(`${API_BASE_URL}/auth/roles`, {
+    method: 'POST',
+    body: JSON.stringify(roleData),
+  });
+  if (!res.ok) throw new Error("Failed to create role");
+  return res.json();
+}
+
+export async function updateRole(roleId, roleData) {
+  const res = await authFetch(`${API_BASE_URL}/auth/roles/${roleId}`, {
+    method: 'PUT',
+    body: JSON.stringify(roleData),
+  });
+  if (!res.ok) throw new Error("Failed to update role");
+  return res.json();
+}
+
+export async function deleteRole(roleId) {
+  const res = await authFetch(`${API_BASE_URL}/auth/roles/${roleId}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error("Failed to delete role");
+  return res.json();
+}
+
+export async function updateUserRole(userId, roleId) {
+  const res = await authFetch(`${API_BASE_URL}/auth/users/${userId}/role`, {
+    method: 'PUT',
+    body: JSON.stringify({ role_id: roleId }),
+  });
+  if (!res.ok) throw new Error("Failed to update user role");
+  return res.json();
+}
+
+export async function fetchAdminStats() {
+  const res = await authFetch(`${API_BASE_URL}/auth/stats`);
+  if (!res.ok) throw new Error("Failed to fetch stats");
+  return res.json();
+}
+
+export async function updateUserPermissions(userId, overrides) {
+  const res = await authFetch(`${API_BASE_URL}/auth/users/${userId}/permissions`, {
+    method: 'PUT',
+    body: JSON.stringify({ overrides }),
+  });
+  if (!res.ok) throw new Error("Failed to update user permissions");
+  return res.json();
+}
+
+// --- REGISTER WITH ROLE ---
+
+export async function registerWithRole(username, roleId) {
+  const res = await authFetch(`${API_BASE_URL}/auth/register`, {
+    method: 'POST',
+    body: JSON.stringify({ username, role_id: roleId }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || "Registration failed");
+  }
   return res.json();
 }

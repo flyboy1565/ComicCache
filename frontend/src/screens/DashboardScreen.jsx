@@ -159,7 +159,7 @@ export default function DashboardScreen({ user, onLogout }) {
       {currentView === 'register' ? (
         <RegisterScreen onRegistered={handleRegistered} onCancel={handleCancelRegister} />
       ) : currentView === 'admin' ? (
-        <AdminScreen onBack={() => setCurrentView('dashboard')} />
+        <AdminScreen user={user} onBack={() => setCurrentView('dashboard')} />
       ) : currentView === 'box-detail' && selectedBoxForDetail ? (
         <BoxDetailScreen
           box={selectedBoxForDetail}

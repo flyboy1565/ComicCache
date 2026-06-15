@@ -1,7 +1,7 @@
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel, select
 from datetime import datetime, timedelta
 from database import engine
-from models import Box, Comic, User
+from models import Box, Comic, User, Role
 from auth import hash_password
 
 def seed_database():
@@ -65,12 +65,47 @@ def seed_database():
         
         session.add_all(comics)
 
+        print("Seeding roles...")
+        admin_role = session.exec(select(Role).where(Role.name == "admin")).first()
+        if not admin_role:
+            admin_role = Role(
+                name="admin", display_name="Editor-in-Chief",
+                description="Full system access",
+                permissions='{"scan":"admin","comics":"admin","boxes":"admin","users":"admin","picklist":"admin","valuation":"admin","settings":"admin"}',
+                is_system=True
+            )
+            session.add(admin_role)
+            session.flush()
+
+        clerk_role = session.exec(select(Role).where(Role.name == "clerk")).first()
+        if not clerk_role:
+            clerk_role = Role(
+                name="clerk", display_name="Page Turner",
+                description="Inventory and scanning",
+                permissions='{"scan":"write","comics":"write","boxes":"read","users":"none","picklist":"read","valuation":"read","settings":"none"}',
+                is_system=True
+            )
+            session.add(clerk_role)
+            session.flush()
+
+        owner_role = session.exec(select(Role).where(Role.name == "owner")).first()
+        if not owner_role:
+            owner_role = Role(
+                name="owner", display_name="Publisher",
+                description="Full operational access except user management",
+                permissions='{"scan":"write","comics":"write","boxes":"write","users":"read","picklist":"write","valuation":"write","settings":"admin"}',
+                is_system=True
+            )
+            session.add(owner_role)
+            session.flush()
+
         print("Seeding admin user...")
         admin = User(
             username="admin",
             email="admin@comiccache.local",
             password_hash=hash_password("admin"),
             role="admin",
+            role_id=admin_role.id,
         )
         session.add(admin)
         session.commit()

@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from typing import List, Optional
 from sqlmodel import Field, Relationship, SQLModel, UniqueConstraint
@@ -39,14 +40,40 @@ class ComicCreate(ComicBase):
     box_id: int
 
 
+class Role(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(unique=True, index=True)
+    display_name: str
+    description: str = ""
+    permissions: str = "{}"
+    is_system: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    def get_permissions(self) -> dict:
+        return json.loads(self.permissions or "{}")
+
+    def can(self, resource: str, action: str = "read") -> bool:
+        perms = self.get_permissions()
+        allowed = perms.get(resource, "none")
+        if allowed == "admin":
+            return True
+        if action == "read" and allowed in ("read", "write"):
+            return True
+        if action == "write" and allowed == "write":
+            return True
+        return False
+
+
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     username: str = Field(unique=True, index=True)
     email: str = Field(unique=True, index=True)
     password_hash: str
     role: str = Field(default="staff")
+    role_id: int = Field(default=5, foreign_key="role.id")
     is_active: bool = Field(default=True)
     must_change_password: bool = Field(default=False)
+    permission_overrides: Optional[str] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 

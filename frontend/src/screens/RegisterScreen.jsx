@@ -1,11 +1,27 @@
-import React, { useState } from 'react';
-import { register } from '../utilities/api';
+import React, { useState, useEffect } from 'react';
+import { register, fetchRoles } from '../utilities/api';
+
+const ROLE_COLORS = {
+  'Editor-in-Chief': '#e53e3e',
+  'Publisher': '#805ad5',
+  'Quartermaster': '#3182ce',
+  'Promoter': '#38a169',
+  'Page Turner': '#718096',
+};
 
 export default function RegisterScreen({ onRegistered, onCancel }) {
   const [username, setUsername] = useState('');
+  const [roleId, setRoleId] = useState(5);
+  const [roles, setRoles] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    fetchRoles()
+      .then(setRoles)
+      .catch(() => setRoles([]));
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -13,7 +29,7 @@ export default function RegisterScreen({ onRegistered, onCancel }) {
     if (!username.trim()) { setError('Username is required'); return; }
     setLoading(true);
     try {
-      await register(username.trim());
+      const result = await register(username.trim(), roleId);
       setDone(true);
     } catch (err) {
       setError(err.message);
@@ -77,6 +93,18 @@ export default function RegisterScreen({ onRegistered, onCancel }) {
               border: '2px solid #e2e8f0', borderRadius: '8px', boxSizing: 'border-box',
             }}
           />
+          <select value={roleId} onChange={e => setRoleId(parseInt(e.target.value))}
+            style={{
+              width: '100%', padding: '12px 14px', fontSize: '15px',
+              border: '2px solid #e2e8f0', borderRadius: '8px', boxSizing: 'border-box',
+              background: '#fff',
+            }}>
+            {roles.map(r => (
+              <option key={r.id} value={r.id}>
+                {r.display_name} ({r.name})
+              </option>
+            ))}
+          </select>
           <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
             <button type="button" onClick={onCancel}
               style={{

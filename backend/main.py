@@ -1,16 +1,18 @@
 import os
+import json
 import secrets
 import asyncio
 from datetime import datetime
+from typing import Optional
 from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, SQLModel, select
 from dotenv import load_dotenv
 
 from database import init_db, get_session
-from models import Box, BoxCreate, Comic, ComicCreate, PicklistItem, PicklistItemCreate, User, CoverCache
+from models import Box, BoxCreate, Comic, ComicCreate, PicklistItem, PicklistItemCreate, User, CoverCache, Role
 from schema import BatchScanPayload, ScanRequest
-from auth import create_access_token, get_current_user, hash_password, verify_password
+from auth import create_access_token, get_current_user, hash_password, verify_password, check_permission, require_role, has_permission
 
 # Import our utility engine functions
 from utils import (
@@ -477,6 +479,7 @@ class LoginRequest(SQLModel):
 
 class RegisterRequest(SQLModel):
     username: str
+    role_id: int = 5
 
 class ChangePasswordRequest(SQLModel):
     current_password: str
@@ -484,6 +487,19 @@ class ChangePasswordRequest(SQLModel):
 
 class ResetPasswordRequest(SQLModel):
     user_id: int
+
+
+def _user_response(user: User, session: Session) -> dict:
+    role = session.get(Role, user.role_id)
+    return {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "role": role.name if role else "unknown",
+        "role_id": user.role_id,
+        "role_display": role.display_name if role else "Unknown",
+        "must_change_password": user.must_change_password,
+    }
 
 
 @app.post("/api/v1/auth/login")
@@ -494,47 +510,46 @@ def login(payload: LoginRequest, session: Session = Depends(get_session)):
     if not user.is_active:
         raise HTTPException(status_code=401, detail="Account is disabled")
     token = create_access_token({"sub": user.id})
-    result = {
+    return {
         "access_token": token,
         "token_type": "bearer",
         "password_change_required": user.must_change_password,
-        "user": {"id": user.id, "username": user.username, "email": user.email, "role": user.role, "must_change_password": user.must_change_password},
+        "user": _user_response(user, session),
     }
-    return result
 
 
 @app.post("/api/v1/auth/register")
-def register(payload: RegisterRequest, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+def register(payload: RegisterRequest, session: Session = Depends(get_session), current_user: User = Depends(check_permission("users", "write"))):
     existing = session.exec(select(User).where(User.username == payload.username)).first()
     if existing:
         raise HTTPException(status_code=400, detail="Username already taken")
+    role = session.get(Role, payload.role_id)
+    if not role:
+        raise HTTPException(status_code=400, detail="Invalid role_id")
     temp_password = secrets.token_urlsafe(12)
     user = User(
         username=payload.username,
         email=f"{payload.username}@comiccache.local",
         password_hash=hash_password(temp_password),
+        role_id=payload.role_id,
         must_change_password=True,
     )
     session.add(user)
     session.commit()
     session.refresh(user)
     print(f"📧 To {user.email}: Your temporary password is: {temp_password}")
-    return {"id": user.id, "username": user.username, "email": user.email, "role": user.role}
+    return _user_response(user, session)
 
 
 @app.get("/api/v1/auth/me")
-def me(current_user: User = Depends(get_current_user)):
-    return {"id": current_user.id, "username": current_user.username, "email": current_user.email, "role": current_user.role, "must_change_password": current_user.must_change_password}
+def me(current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    return _user_response(current_user, session)
 
 
 @app.get("/api/v1/auth/users")
-def list_users(session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
-    users = session.exec(select(User).where(User.role != "admin")).all()
-    return [{"id": u.id, "username": u.username, "email": u.email, "role": u.role, "must_change_password": u.must_change_password} for u in users]
+def list_users(session: Session = Depends(get_session), current_user: User = Depends(check_permission("users", "read"))):
+    users = session.exec(select(User)).all()
+    return [_user_response(u, session) for u in users]
 
 
 @app.post("/api/v1/auth/change-password")
@@ -551,9 +566,7 @@ def change_password(payload: ChangePasswordRequest, session: Session = Depends(g
 
 
 @app.post("/api/v1/auth/reset-password")
-def reset_password(payload: ResetPasswordRequest, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+def reset_password(payload: ResetPasswordRequest, session: Session = Depends(get_session), current_user: User = Depends(check_permission("users", "write"))):
     target = session.get(User, payload.user_id)
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
@@ -564,6 +577,152 @@ def reset_password(payload: ResetPasswordRequest, session: Session = Depends(get
     session.commit()
     print(f"📧 To {target.email}: Your password has been reset. Temporary password: {temp_password}")
     return {"message": f"Password reset email sent to {target.email}"}
+
+
+# --- ROLE MANAGEMENT ENDPOINTS ---
+
+class RoleCreateRequest(SQLModel):
+    name: str
+    display_name: str
+    description: str = ""
+    permissions: str = "{}"
+
+class RoleUpdateRequest(SQLModel):
+    name: Optional[str] = None
+    display_name: Optional[str] = None
+    description: Optional[str] = None
+    permissions: Optional[str] = None
+
+
+@app.get("/api/v1/auth/roles")
+def list_roles(session: Session = Depends(get_session), current_user: User = Depends(check_permission("users", "read"))):
+    roles = session.exec(select(Role)).all()
+    return [
+        {
+            "id": r.id,
+            "name": r.name,
+            "display_name": r.display_name,
+            "description": r.description,
+            "permissions": r.get_permissions(),
+            "is_system": r.is_system,
+            "user_count": len(session.exec(select(User).where(User.role_id == r.id)).all()),
+        }
+        for r in roles
+    ]
+
+
+@app.post("/api/v1/auth/roles")
+def create_role(payload: RoleCreateRequest, session: Session = Depends(get_session), current_user: User = Depends(check_permission("users", "admin"))):
+    existing = session.exec(select(Role).where(Role.name == payload.name)).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Role already exists")
+    role = Role(
+        name=payload.name,
+        display_name=payload.display_name,
+        description=payload.description,
+        permissions=payload.permissions,
+    )
+    session.add(role)
+    session.commit()
+    session.refresh(role)
+    return {"id": role.id, "name": role.name, "display_name": role.display_name}
+
+
+@app.put("/api/v1/auth/roles/{role_id}")
+def update_role(role_id: int, payload: RoleUpdateRequest, session: Session = Depends(get_session), current_user: User = Depends(check_permission("users", "admin"))):
+    role = session.get(Role, role_id)
+    if not role:
+        raise HTTPException(status_code=404, detail="Role not found")
+    if payload.name is not None:
+        role.name = payload.name
+    if payload.display_name is not None:
+        role.display_name = payload.display_name
+    if payload.description is not None:
+        role.description = payload.description
+    if payload.permissions is not None:
+        role.permissions = payload.permissions
+    session.commit()
+    session.refresh(role)
+    return {"id": role.id, "name": role.name, "display_name": role.display_name}
+
+
+@app.delete("/api/v1/auth/roles/{role_id}")
+def delete_role(role_id: int, session: Session = Depends(get_session), current_user: User = Depends(check_permission("users", "admin"))):
+    role = session.get(Role, role_id)
+    if not role:
+        raise HTTPException(status_code=404, detail="Role not found")
+    if role.is_system:
+        raise HTTPException(status_code=400, detail="Cannot delete a system role")
+    assigned = session.exec(select(User).where(User.role_id == role_id)).count()
+    if assigned > 0:
+        raise HTTPException(status_code=400, detail=f"Cannot delete role with {assigned} assigned users")
+    session.delete(role)
+    session.commit()
+    return {"status": "deleted"}
+
+
+@app.put("/api/v1/auth/users/{user_id}/role")
+def update_user_role(user_id: int, payload: dict, session: Session = Depends(get_session), current_user: User = Depends(check_permission("users", "write"))):
+    target = session.get(User, user_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    role_id = payload.get("role_id")
+    role = session.get(Role, role_id)
+    if not role:
+        raise HTTPException(status_code=400, detail="Invalid role_id")
+    target.role_id = role_id
+    session.commit()
+    return _user_response(target, session)
+
+
+@app.put("/api/v1/auth/users/{user_id}/permissions")
+def update_user_permissions(user_id: int, payload: dict, session: Session = Depends(get_session), current_user: User = Depends(check_permission("users", "admin"))):
+    target = session.get(User, user_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    overrides = payload.get("overrides")
+    if overrides is not None:
+        json.dumps(overrides)  # validate it's valid JSON
+        target.permission_overrides = json.dumps(overrides)
+    else:
+        target.permission_overrides = None
+    session.commit()
+    return _user_response(target, session)
+
+
+# --- STATS ENDPOINT ---
+
+@app.get("/api/v1/auth/stats")
+def get_admin_stats(session: Session = Depends(get_session), current_user: User = Depends(check_permission("users", "read"))):
+    top_searched = session.exec(
+        select(CoverCache).where(CoverCache.hit_count > 1).order_by(CoverCache.hit_count.desc()).limit(10)
+    ).all()
+
+    oldest_comics = session.exec(
+        select(Comic).order_by(Comic.date_scanned.asc()).limit(10)
+    ).all()
+
+    return {
+        "top_searched": [
+            {
+                "series_title": c.series_title,
+                "issue_number": c.issue_number,
+                "publisher": c.publisher,
+                "hit_count": c.hit_count,
+            }
+            for c in top_searched
+        ],
+        "oldest_comics": [
+            {
+                "title": c.title,
+                "issue_number": c.issue_number,
+                "publisher": c.publisher,
+                "date_scanned": c.date_scanned.isoformat() if c.date_scanned else None,
+                "box_name": c.box.name if c.box else None,
+            }
+            for c in oldest_comics
+        ],
+    }
 
 
 # --- PICKLIST ENDPOINTS ---
