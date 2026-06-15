@@ -366,6 +366,40 @@ def get_box_comics(box_id: int, session: Session = Depends(get_session)):
 
 # --- COMIC DETAIL ENDPOINT ---
 
+@app.get("/api/v1/comics/search")
+def search_comics(query: str, session: Session = Depends(get_session)):
+    if not query or len(query.strip()) < 2:
+        return []
+        
+    search_term = f"%{query.strip()}%"
+    statement = select(Comic).where(
+        (Comic.title.like(search_term)) |
+        (Comic.writer.like(search_term)) |
+        (Comic.penciler.like(search_term)) |
+        (Comic.keywords.like(search_term)) |
+        (Comic.publisher.like(search_term)) |
+        (Comic.barcode == query.strip())
+    )
+    results = session.exec(statement).all()
+    
+    transformed_results = []
+    for comic in results:
+        transformed_results.append({
+            "id": comic.id,
+            "title": comic.title,
+            "issue_number": comic.issue_number,
+            "publisher": comic.publisher,
+            "cover_image": comic.cover_image,
+            "estimated_value": comic.estimated_value,
+            "writer": comic.writer,
+            "penciler": comic.penciler,
+            "keywords": comic.keywords,
+            "box_name": comic.box.name,
+            "box_location": comic.box.location
+        })
+    return transformed_results
+
+
 @app.get("/api/v1/comics/{comic_id}")
 async def get_comic_detail(comic_id: int, session: Session = Depends(get_session)):
     comic = session.get(Comic, comic_id)
@@ -778,42 +812,6 @@ def clear_picklist(session: Session = Depends(get_session), current_user: User =
         session.delete(item)
     session.commit()
     return {"status": "cleared"}
-
-
-# --- SEARCH ENGINE ENDPOINTS ---
-
-@app.get("/api/v1/comics/search")
-def search_comics(query: str, session: Session = Depends(get_session)):
-    if not query or len(query.strip()) < 2:
-        return []
-        
-    search_term = f"%{query.strip()}%"
-    statement = select(Comic).where(
-        (Comic.title.like(search_term)) |
-        (Comic.writer.like(search_term)) |
-        (Comic.penciler.like(search_term)) |
-        (Comic.keywords.like(search_term)) |
-        (Comic.publisher.like(search_term)) |
-        (Comic.barcode == query.strip())
-    )
-    results = session.exec(statement).all()
-    
-    transformed_results = []
-    for comic in results:
-        transformed_results.append({
-            "id": comic.id,
-            "title": comic.title,
-            "issue_number": comic.issue_number,
-            "publisher": comic.publisher,
-            "cover_image": comic.cover_image,
-            "estimated_value": comic.estimated_value,
-            "writer": comic.writer,
-            "penciler": comic.penciler,
-            "keywords": comic.keywords,
-            "box_name": comic.box.name,
-            "box_location": comic.box.location
-        })
-    return transformed_results
 
 
 @app.post("/api/v1/scan/batch")

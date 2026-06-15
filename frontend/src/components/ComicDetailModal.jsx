@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { memo } from 'react';
 import ComicBubbleIcon from './ComicBubbleIcon';
 
-export default function ComicDetailModal({ comic, onClose, onViewSeries, onAddToPicklist }) {
+const ComicDetailModal = memo(function ComicDetailModal({ comic, onClose, onViewSeries, onAddToPicklist }) {
   return (
     <>
       <div
@@ -9,14 +9,14 @@ export default function ComicDetailModal({ comic, onClose, onViewSeries, onAddTo
         style={{
           position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
           background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(2px)',
-          zIndex: 9998,
+          zIndex: 10001,
         }}
       />
       <div
         style={{
           position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
           background: '#fff', borderRadius: '12px', padding: '24px',
-          maxWidth: '400px', width: '90vw', zIndex: 9999,
+          maxWidth: '400px', width: '90vw', zIndex: 10002,
           boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
           fontFamily: 'system-ui, sans-serif',
         }}
@@ -128,4 +128,6 @@ export default function ComicDetailModal({ comic, onClose, onViewSeries, onAddTo
       </div>
     </>
   );
-}
+});
+
+export default ComicDetailModal;

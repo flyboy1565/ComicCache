@@ -1,9 +1,11 @@
 import os
 from sqlmodel import Session, SQLModel, create_engine
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-sqlite_file_name = os.path.join(BASE_DIR, "comiccache.db")
-sqlite_url = f"sqlite:///{sqlite_file_name}"
+DB_PATH = os.getenv("DB_PATH")
+if not DB_PATH:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    DB_PATH = os.path.join(BASE_DIR, "comiccache.db")
+sqlite_url = f"sqlite:///{DB_PATH}"
 
 engine = create_engine(sqlite_url, connect_args={"check_same_thread": False})
 
@@ -115,6 +117,25 @@ def init_db():
             elif user.role == "staff" and clerk_role:
                 user.role_id = clerk_role.id
         session.commit()
+
+        # Seed admin user (idempotent — only creates if no admin exists)
+        from auth import hash_password
+        existing_admin = session.exec(
+            select(User).where(User.role == "admin")
+        ).first()
+        if not existing_admin and admin_role:
+            admin_username = os.getenv("ADMIN_USERNAME", "admin")
+            admin_password = os.getenv("ADMIN_PASSWORD", "admin")
+            admin_email = os.getenv("ADMIN_EMAIL", "admin@comiccache.local")
+            admin_user = User(
+                username=admin_username,
+                email=admin_email,
+                password_hash=hash_password(admin_password),
+                role="admin",
+                role_id=admin_role.id,
+            )
+            session.add(admin_user)
+            session.commit()
 
 
 def get_session():

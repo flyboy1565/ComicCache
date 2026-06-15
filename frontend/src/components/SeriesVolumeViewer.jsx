@@ -1,5 +1,5 @@
 // src/components/SeriesVolumeViewer.jsx
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { fetchSeriesOverview, fetchComicDetail, fetchCoverForIssue, addToPicklist } from '../utilities/api';
 import ComicBubbleIcon from './ComicBubbleIcon';
 import ComicDetailModal from './ComicDetailModal';
@@ -34,6 +34,10 @@ export default function SeriesVolumeViewer({ title, publisher, onClose }) {
       if (pollRef.current) clearInterval(pollRef.current);
     };
   }, [title, publisher]);
+
+  const handleCloseModal = useCallback(() => setSelectedComic(null), []);
+  const handleViewSeries = useCallback(() => { setSelectedComic(null); }, []);
+  const handleAddToPicklist = useCallback((item) => addToPicklist(item), []);
 
   // Poll while covers are being gathered
   useEffect(() => {
@@ -360,9 +364,9 @@ export default function SeriesVolumeViewer({ title, publisher, onClose }) {
       {selectedComic && (
         <ComicDetailModal
           comic={selectedComic}
-          onClose={() => setSelectedComic(null)}
-          onViewSeries={(t, p) => { setSelectedComic(null); /* already viewing this series */ }}
-          onAddToPicklist={(item) => addToPicklist(item)}
+          onClose={handleCloseModal}
+          onViewSeries={handleViewSeries}
+          onAddToPicklist={handleAddToPicklist}
         />
       )}
     </>
