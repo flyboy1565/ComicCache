@@ -5,3 +5,7 @@ httpx
 requests
 bs4
 python-dotenv
+python-jose
+passlib[bcrypt]
+bcrypt
+curl_cffi
