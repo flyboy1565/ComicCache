@@ -1,0 +1,528 @@
+.container {
+  width: 100%;
+}
+
+.topBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.backBtn {
+  min-height: var(--touch-target);
+  min-width: var(--touch-target);
+  background: none;
+  border: none;
+  font-size: var(--font-2xl);
+  cursor: pointer;
+  padding: var(--space-xs) var(--space-sm);
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.backBtn:active {
+  opacity: 0.7;
+}
+
+.pageTitle {
+  margin: 0;
+  font-size: var(--font-2xl);
+  color: var(--color-text);
+}
+
+.message {
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-base);
+  margin-bottom: 16px;
+}
+
+.messageSuccess {
+  background: #f0fff4;
+  color: #276749;
+  border: 1px solid #c6f6d5;
+}
+
+.messageError {
+  background: var(--color-danger-bg);
+  color: #c53030;
+  border: 1px solid #fed7d7;
+}
+
+.tabBar {
+  display: flex;
+  gap: var(--space-sm);
+  margin-bottom: 16px;
+}
+
+.tabBtn {
+  min-height: var(--touch-target);
+  padding: 10px 18px;
+  font-size: var(--font-base);
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tabBtn:active {
+  transform: scale(0.97);
+}
+
+.tabActive {
+  color: #fff;
+}
+
+.tabStaffActive {
+  background: var(--color-primary);
+}
+
+.tabRolesActive {
+  background: var(--color-purple);
+}
+
+.tabStatsActive {
+  background: #2b6cb0;
+}
+
+.tabInactive {
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+}
+
+.loadingText,
+.emptyText {
+  font-size: var(--font-base);
+  color: var(--color-text-muted);
+}
+
+.emptyText {
+  font-style: italic;
+}
+
+/* ── Staff Tab ── */
+.staffList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.staffCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: var(--space-md);
+  background: #fff;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.staffAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-xl);
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.staffInfo {
+  flex: 1;
+  min-width: 120px;
+}
+
+.staffName {
+  font-size: var(--font-base);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.staffRole {
+  font-size: var(--font-sm);
+  color: var(--color-text-muted);
+}
+
+.roleSelect {
+  min-height: var(--touch-target);
+  padding: 8px 10px;
+  font-size: var(--font-sm);
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: #fff;
+  cursor: pointer;
+}
+
+.pendingBadge {
+  font-size: var(--font-xs);
+  padding: 2px var(--space-sm);
+  border-radius: 999px;
+  background: #fefcbf;
+  color: #744210;
+  font-weight: 600;
+}
+
+.actionBtnSmall {
+  min-height: var(--touch-target);
+  padding: 8px 12px;
+  font-size: var(--font-sm);
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.actionBtnSmall:active {
+  transform: scale(0.95);
+}
+
+.permBtnDefault {
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+}
+
+.permBtnActive {
+  background: var(--color-purple);
+  color: #fff;
+}
+
+.resetBtn {
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+}
+
+.resetBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Roles Tab ── */
+.roleFilterRow {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.roleFilterBtn {
+  min-height: var(--touch-target);
+  padding: 10px 16px;
+  font-size: var(--font-md);
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.roleFilterBtn:active {
+  transform: scale(0.97);
+}
+
+.roleFilterInactive {
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+}
+
+.roleEditorCard {
+  background: #fff;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.roleEditorHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+}
+
+.roleEditorTitle {
+  margin: 0;
+  font-size: var(--font-xl);
+  color: var(--color-text);
+}
+
+.roleEditorActions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.permissionRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+  font-size: var(--font-md);
+  flex-wrap: wrap;
+}
+
+.permissionLabel {
+  width: 100px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: capitalize;
+  flex-shrink: 0;
+}
+
+.permissionBtns {
+  display: flex;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.permLevelBtn {
+  min-height: 36px;
+  min-width: 44px;
+  padding: 6px 12px;
+  font-size: var(--font-xs);
+  font-weight: 600;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.permLevelBtn:active {
+  transform: scale(0.95);
+}
+
+.permLevelActive {
+  background: var(--color-purple);
+  color: #fff;
+}
+
+.permLevelInactive {
+  background: #fff;
+  color: var(--color-text-secondary);
+}
+
+.deleteRoleBtn {
+  min-height: var(--touch-target);
+  padding: 8px 14px;
+  font-size: var(--font-sm);
+  font-weight: 600;
+  background: var(--color-danger-bg);
+  color: var(--color-primary);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.deleteRoleBtn:active {
+  background: #fed7d7;
+}
+
+/* ── Stats Tab ── */
+.statsSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.statCard {
+  background: #fff;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  padding: 16px;
+}
+
+.statCardTitle {
+  margin: 0 0 var(--space-md) 0;
+  font-size: var(--font-lg);
+  color: var(--color-text);
+}
+
+.statItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) 10px;
+  border-radius: 6px;
+  font-size: var(--font-md);
+}
+
+.statItemEven {
+  background: var(--color-bg-light);
+}
+
+.statItemOdd {
+  background: #fff;
+}
+
+.statRank {
+  width: 20px;
+  font-weight: 700;
+  color: var(--color-text-light);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.statTitle {
+  flex: 1;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.statPublisher {
+  color: var(--color-text-muted);
+  font-size: var(--font-sm);
+  width: 100px;
+  flex-shrink: 0;
+}
+
+.statCount {
+  font-weight: 700;
+  color: #dd6b20;
+  min-width: 50px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.statDate {
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  font-size: var(--font-sm);
+  min-width: 90px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Permission Override Modal ── */
+.permOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+}
+
+.permModal {
+  background: #fff;
+  border-radius: var(--radius-xl);
+  padding: var(--space-xl);
+  max-width: 480px;
+  width: 90vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.permModalTitle {
+  margin: 0 0 var(--space-md) 0;
+  font-size: var(--font-xl);
+  color: var(--color-text);
+}
+
+.permModalDesc {
+  font-size: var(--font-sm);
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-md) 0;
+}
+
+.permRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+  font-size: var(--font-md);
+  flex-wrap: wrap;
+}
+
+.permResource {
+  width: 100px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: capitalize;
+  flex-shrink: 0;
+}
+
+.permOpts {
+  display: flex;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.permOptBtn {
+  min-height: 36px;
+  min-width: 44px;
+  padding: 6px 10px;
+  font-size: var(--font-xs);
+  font-weight: 600;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.permOptBtn:active {
+  transform: scale(0.95);
+}
+
+.permClearBtn {
+  min-height: 36px;
+  padding: 6px 10px;
+  font-size: var(--font-xs);
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  text-decoration: underline;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.closeModalBtn {
+  margin-top: var(--space-md);
+  width: 100%;
+  min-height: var(--touch-target);
+  padding: 10px;
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.closeModalBtn:active {
+  background: #e2e8f0;
+}
+
+@media (max-width: 480px) {
+  .staffCard {
+    gap: 6px;
+  }
+
+  .staffInfo {
+    min-width: 80px;
+  }
+
+  .permissionLabel,
+  .permResource {
+    width: 80px;
+  }
+
+  .permModal {
+    padding: var(--space-lg);
+  }
+}

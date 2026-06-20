@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { fetchPicklist, removeFromPicklist, updatePicklistItem, clearPicklist } from '../utilities/api';
+import Skeleton from './Skeleton';
+import styles from './PicklistDrawer.module.css';
 
 const STORAGE_KEY = 'comiccache_picklist';
 
@@ -18,6 +20,17 @@ export default function PicklistDrawer({ onClose, showToast }) {
   const cached = loadCached();
   const [items, setItems] = useState(cached || []);
   const [loading, setLoading] = useState(true);
+  const swipeStartX = useRef(0);
+  const drawerRef = useRef(null);
+
+  const handleTouchStart = (e) => {
+    swipeStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e) => {
+    const dx = e.changedTouches[0].clientX - swipeStartX.current;
+    if (dx > 80) onClose();
+  };
 
   const loadItems = () => {
     setLoading(true);
@@ -62,108 +75,78 @@ export default function PicklistDrawer({ onClose, showToast }) {
 
   return (
     <>
+      <div onClick={onClose} className={styles.overlay} />
       <div
-        onClick={onClose}
-        style={{
-          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-          background: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(2px)', zIndex: 9998,
-        }}
-      />
-      <div style={{
-        position: 'fixed', top: 0, right: 0, width: '420px', maxWidth: '90vw',
-        height: '100vh', background: '#1a202c',
-        boxShadow: '-4px 0 25px rgba(0, 0, 0, 0.3)', zIndex: 9999,
-        display: 'flex', flexDirection: 'column',
-        fontFamily: 'system-ui, sans-serif', color: '#fff',
-      }}>
-        {/* Header */}
-        <div style={{ padding: '20px', borderBottom: '1px solid #2d3748', background: '#232d3f' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        ref={drawerRef}
+        className={styles.drawer}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div className={styles.drawerHeader}>
+          <div className={styles.headerTop}>
             <div>
-              <span style={{ fontSize: '11px', color: '#a0aec0', fontWeight: '800', textTransform: 'uppercase' }}>
+              <span className={styles.wantLabel}>
                 📋 WANT LIST
               </span>
-              <h2 style={{ margin: '4px 0 0 0', fontSize: '20px', color: '#fff', fontWeight: '700' }}>
+              <h2 className={styles.drawerTitle}>
                 Picklist ({items.length})
               </h2>
             </div>
-            <button
-              onClick={onClose}
-              style={{ background: '#2d3748', border: 'none', padding: '6px 10px', borderRadius: '6px', fontSize: '16px', cursor: 'pointer', color: '#a0aec0', fontWeight: 'bold' }}
-            >
+            <button onClick={onClose} className={styles.closeBtn}>
               ✕
             </button>
           </div>
         </div>
 
-        {/* Items */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px', background: '#1a202c' }}>
+        <div className={styles.itemsArea}>
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px 0', color: '#718096', fontSize: '14px' }}>
-              Loading picklist...
+            <div className={styles.loadingText}>
+              <Skeleton width="100%" height={48} count={4} />
             </div>
           ) : items.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 0', color: '#a0aec0', fontSize: '13px', fontStyle: 'italic' }}>
+            <div className={styles.emptyText}>
               No items in picklist yet.
-              <div style={{ marginTop: '8px', fontSize: '12px', color: '#718096' }}>
+              <div className={styles.emptyHint}>
                 Browse a box and add comics you're looking for!
               </div>
             </div>
           ) : (
             items.map(item => (
-              <div key={item.id} style={{
-                display: 'flex', flexDirection: 'column', gap: '8px',
-                background: '#2d3748', border: '1px solid #4a5568',
-                borderRadius: '8px', padding: '12px',
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <div key={item.id} className={styles.itemCard}>
+                <div className={styles.itemHeader}>
+                  <div className={styles.itemInfo}>
+                    <div className={styles.itemName}>
                       {item.title} #{item.issue_number}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#a0aec0', marginTop: '2px' }}>
+                    <div className={styles.itemPublisher}>
                       {item.publisher}
                     </div>
                   </div>
-                  <span style={{
-                    fontSize: '10px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '4px',
-                    background: item.status === 'found' ? '#2f855a' : '#9b2c2c',
-                    color: '#fff', whiteSpace: 'nowrap', marginLeft: '8px',
-                  }}>
+                  <span className={`${styles.statusBadge} ${item.status === 'found' ? styles.statusFound : styles.statusLooking}`}>
                     {item.status === 'found' ? 'FOUND' : 'LOOKING'}
                   </span>
                 </div>
 
                 {item.notes && (
-                  <div style={{ fontSize: '12px', color: '#cbd5e0', fontStyle: 'italic' }}>
+                  <div className={styles.itemNote}>
                     {item.notes}
                   </div>
                 )}
 
-                <div style={{ fontSize: '11px', color: '#718096' }}>
+                <div className={styles.itemDate}>
                   Added {new Date(item.date_added).toLocaleDateString()}
                 </div>
 
-                {/* Actions */}
-                <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+                <div className={styles.actionsRow}>
                   <button
                     onClick={() => handleToggleStatus(item)}
-                    style={{
-                      flex: 1, padding: '6px', borderRadius: '6px', border: 'none',
-                      fontSize: '12px', fontWeight: 'bold', cursor: 'pointer',
-                      background: item.status === 'found' ? '#744210' : '#2f855a',
-                      color: '#fff',
-                    }}
+                    className={`${styles.actionBtn} ${item.status === 'found' ? styles.markLooking : styles.markFound}`}
                   >
                     {item.status === 'found' ? '↩ Mark Looking' : '✓ Mark Found'}
                   </button>
                   <button
                     onClick={() => handleRemove(item.id)}
-                    style={{
-                      padding: '6px 12px', borderRadius: '6px', border: 'none',
-                      fontSize: '12px', fontWeight: 'bold', cursor: 'pointer',
-                      background: '#9b2c2c', color: '#fff',
-                    }}
+                    className={styles.removeBtn}
                   >
                     ✕ Remove
                   </button>
@@ -172,17 +155,8 @@ export default function PicklistDrawer({ onClose, showToast }) {
             ))
           )}
 
-          {/* Clear All button */}
           {items.length > 0 && (
-            <button
-              onClick={handleClearAll}
-              style={{
-                width: '100%', padding: '10px', marginTop: '10px',
-                borderRadius: '8px', border: '1px solid #9b2c2c',
-                background: 'transparent', color: '#fc8181',
-                fontSize: '13px', fontWeight: 'bold', cursor: 'pointer',
-              }}
-            >
+            <button onClick={handleClearAll} className={styles.clearAllBtn}>
               🗑 Clear All ({items.length} items)
             </button>
           )}

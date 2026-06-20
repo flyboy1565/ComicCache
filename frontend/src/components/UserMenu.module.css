@@ -1,0 +1,207 @@
+.wrapper {
+  position: relative;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  min-height: var(--touch-target);
+  min-width: var(--touch-target);
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.trigger:active {
+  background: rgba(0,0,0,0.05);
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-base);
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.username {
+  font-size: var(--font-md);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.arrow {
+  font-size: 10px;
+  color: var(--color-text-light);
+}
+
+.dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 4px;
+  min-width: 220px;
+  background: #fff;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  padding: var(--space-md);
+  z-index: 1000;
+  border: 1px solid var(--color-border);
+}
+
+.userSection {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.userAvatarLarge {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-xl);
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.userInfo {
+  min-width: 0;
+}
+
+.userName {
+  font-size: var(--font-base);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.userEmail {
+  font-size: var(--font-sm);
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.userRoleBadge {
+  margin-left: auto;
+  font-size: var(--font-xs);
+  font-weight: 600;
+  padding: 2px var(--space-sm);
+  border-radius: 999px;
+  background: var(--color-danger-bg);
+}
+
+.employeeSection {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.employeeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.employeeLabel {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--color-text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.addBtn {
+  min-height: var(--touch-target);
+  min-width: var(--touch-target);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: var(--font-base);
+  color: var(--color-primary);
+  font-weight: bold;
+  border-radius: var(--radius-sm);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.addBtn:active {
+  background: var(--color-danger-bg);
+}
+
+.noEmployees {
+  font-size: var(--font-sm);
+  color: var(--color-text-light);
+  font-style: italic;
+  padding: 4px 0;
+}
+
+.employeeRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 4px 0;
+}
+
+.employeeAvatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-xs);
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.employeeName {
+  font-size: var(--font-md);
+  color: var(--color-text-secondary);
+}
+
+.employeeRoleLabel {
+  font-size: 10px;
+  color: var(--color-text-light);
+  margin-left: auto;
+}
+
+.menuBtn {
+  width: 100%;
+  min-height: var(--touch-target);
+  padding: 10px 0;
+  font-size: var(--font-md);
+  font-weight: 600;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.menuBtn:active {
+  opacity: 0.7;
+}
+
+.signOutBtn {
+  background: var(--color-danger-bg);
+  color: var(--color-primary);
+}

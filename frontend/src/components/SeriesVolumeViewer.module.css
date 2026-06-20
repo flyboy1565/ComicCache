@@ -1,0 +1,352 @@
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  z-index: 9998;
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 420px;
+  max-width: 90vw;
+  height: 100vh;
+  height: 100dvh;
+  background: var(--color-bg-dark);
+  box-shadow: -4px 0 25px rgba(0, 0, 0, 0.3);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  font-family: system-ui, sans-serif;
+  color: #fff;
+  animation: slideIn 0.2s ease-out;
+}
+
+.header {
+  padding: var(--space-xl);
+  padding-top: calc(var(--space-xl) + var(--safe-top));
+  border-bottom: 1px solid #2d3748;
+  background: #232d3f;
+}
+
+.headerTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.publisherLabel {
+  font-size: var(--font-xs);
+  color: var(--color-text-light);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.seriesTitle {
+  margin: 4px 0 0 0;
+  font-size: var(--font-2xl);
+  color: #fff;
+  font-weight: 700;
+}
+
+.closeBtn {
+  min-height: var(--touch-target);
+  min-width: var(--touch-target);
+  padding: 8px 12px;
+  font-size: var(--font-xl);
+  background: #2d3748;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--color-text-light);
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.closeBtn:active {
+  background: #4a5568;
+}
+
+.filterRow {
+  display: flex;
+  gap: 10px;
+  margin-top: var(--space-lg);
+  align-items: center;
+}
+
+.filterBtn {
+  border: none;
+  min-height: var(--touch-target);
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: var(--font-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.filterBtn:active {
+  transform: scale(0.97);
+}
+
+.filterHave {
+  background: #234e52;
+  color: #e6fffa;
+}
+
+.filterHaveActive {
+  background: #2f855a;
+  color: #e6fffa;
+  outline: 2px solid var(--color-green);
+}
+
+.filterMissing {
+  background: #742a2a;
+  color: #fff5f5;
+}
+
+.filterMissingActive {
+  background: #9b2c2c;
+  color: #fff5f5;
+  outline: 2px solid var(--color-danger);
+}
+
+.valueBadge {
+  background: #2d3748;
+  color: var(--color-text-on-dark);
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: var(--font-sm);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.valueAmount {
+  color: var(--color-green-light);
+}
+
+.activeFilter {
+  margin-top: var(--space-md);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #2d3748;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-xs);
+}
+
+.activeFilterText {
+  color: var(--color-text-on-dark);
+}
+
+.clearFilterBtn {
+  background: none;
+  border: none;
+  color: #fc8181;
+  cursor: pointer;
+  font-weight: bold;
+  min-height: var(--touch-target);
+  min-width: var(--touch-target);
+  padding: 4px 8px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.gatheringBanner {
+  padding: 10px var(--space-xl);
+  background: #2b3a4a;
+  border-bottom: 1px solid #4a5568;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-sm);
+  color: var(--color-text-on-dark);
+}
+
+.scrollArea {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--space-xl);
+  padding-bottom: calc(var(--space-xl) + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  background: var(--color-bg-dark);
+}
+
+.loadingText,
+.emptyText {
+  text-align: center;
+  padding: 40px 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-base);
+}
+
+.emptyText {
+  color: var(--color-text-light);
+  font-size: var(--font-md);
+  font-style: italic;
+}
+
+.timelineItem {
+  display: flex;
+  background: #2d3748;
+  border: 1px solid #4a5568;
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  align-items: center;
+  gap: var(--space-md);
+  cursor: pointer;
+  transition: border-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  min-height: var(--touch-target);
+}
+
+.timelineItem:active {
+  border-color: #718096;
+}
+
+.timelineItemMissing {
+  opacity: 0.65;
+}
+
+.coverBox {
+  width: 50px;
+  height: 72px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid #4a5568;
+}
+
+.coverBox img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.coverBoxPending {
+  background: rgba(237, 137, 54, 0.15);
+}
+
+.coverBoxHave {
+  background: rgba(56, 161, 105, 0.15);
+}
+
+.coverBoxMissing {
+  background: rgba(229, 62, 62, 0.15);
+  border: 1px dashed var(--color-primary);
+}
+
+.coverBoxCached {
+  background: var(--color-bg-dark);
+}
+
+.coverPlaceholder {
+  font-size: 14px;
+  opacity: 0.6;
+}
+
+.metaArea {
+  flex: 1;
+  min-width: 0;
+}
+
+.metaTop {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.haveBadge {
+  font-size: 10px;
+  font-weight: bold;
+  color: #fff;
+  background: #38a169;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.missingBadge {
+  font-size: 10px;
+  font-weight: bold;
+  color: #fff;
+  background: var(--color-primary);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.issueNumber {
+  font-size: var(--font-lg);
+  color: #fff;
+}
+
+.boxLocation {
+  font-size: var(--font-sm);
+  color: var(--color-text-light);
+  margin-top: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.financialCol {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.qtyLabel {
+  font-size: var(--font-xs);
+  color: var(--color-text-muted);
+  font-weight: bold;
+}
+
+.issueValue {
+  font-size: var(--font-base);
+  font-weight: bold;
+  margin-top: var(--space-xs);
+}
+
+.issueValueHave {
+  color: var(--color-green);
+}
+
+.issueValueMissing {
+  color: var(--color-text-muted);
+}
+
+.loadingOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.3);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: var(--font-base);
+}

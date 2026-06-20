@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import LoginScreen from './screens/LoginScreen';
 import SetPasswordScreen from './screens/SetPasswordScreen';
 import DashboardScreen from './screens/DashboardScreen';
+import Skeleton from './components/Skeleton';
 import { getToken, fetchMe, clearToken } from './utilities/api';
 
 export default function App() {
@@ -43,8 +44,8 @@ export default function App() {
 
   if (loading) {
     return (
-      <div style={{ fontFamily: 'sans-serif', textAlign: 'center', marginTop: '100px', color: '#718096' }}>
-        Loading...
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100dvh' }}>
+        <Skeleton width={200} height={24} />
       </div>
     );
   }

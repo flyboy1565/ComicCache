@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { login, setToken } from '../utilities/api';
+import styles from './LoginScreen.module.css';
 
 export default function LoginScreen({ onLogin }) {
   const [username, setUsername] = useState('');
@@ -23,28 +24,21 @@ export default function LoginScreen({ onLogin }) {
   };
 
   return (
-    <div style={{
-      maxWidth: '360px', margin: '80px auto 0', padding: '30px',
-      fontFamily: 'sans-serif',
-    }}>
-      <h1 style={{ color: '#e53e3e', fontSize: '26px', textAlign: 'center', marginBottom: '8px' }}>
+    <div className={styles.container}>
+      <h1 className={styles.title}>
         ⚡ ComicCache
       </h1>
-      <p style={{ textAlign: 'center', color: '#718096', fontSize: '14px', marginBottom: '30px' }}>
+      <p className={styles.subtitle}>
         Staff Login
       </p>
 
       {error && (
-        <div style={{
-          background: '#fff5f5', color: '#c53030', padding: '10px 14px',
-          borderRadius: '8px', fontSize: '14px', marginBottom: '16px',
-          border: '1px solid #fed7d7',
-        }}>
+        <div className={styles.error}>
           {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <form onSubmit={handleSubmit} className={styles.form}>
         <input
           type="text"
           placeholder="Username"
@@ -52,10 +46,7 @@ export default function LoginScreen({ onLogin }) {
           onChange={e => setUsername(e.target.value)}
           required
           autoFocus
-          style={{
-            width: '100%', padding: '12px 14px', fontSize: '15px',
-            border: '2px solid #e2e8f0', borderRadius: '8px', boxSizing: 'border-box',
-          }}
+          className={styles.input}
         />
         <input
           type="password"
@@ -63,20 +54,12 @@ export default function LoginScreen({ onLogin }) {
           value={password}
           onChange={e => setPassword(e.target.value)}
           required
-          style={{
-            width: '100%', padding: '12px 14px', fontSize: '15px',
-            border: '2px solid #e2e8f0', borderRadius: '8px', boxSizing: 'border-box',
-          }}
+          className={styles.input}
         />
         <button
           type="submit"
           disabled={loading}
-          style={{
-            background: '#e53e3e', color: '#fff', border: 'none',
-            padding: '12px', borderRadius: '8px', fontSize: '16px',
-            fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer',
-            opacity: loading ? 0.7 : 1,
-          }}
+          className={styles.submitBtn}
         >
           {loading ? 'Signing in...' : 'Sign In'}
         </button>

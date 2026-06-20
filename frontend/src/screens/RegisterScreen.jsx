@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { register, fetchRoles } from '../utilities/api';
+import styles from './RegisterScreen.module.css';
 
 const ROLE_COLORS = {
   'Editor-in-Chief': '#e53e3e',
@@ -40,24 +41,14 @@ export default function RegisterScreen({ onRegistered, onCancel }) {
 
   if (done) {
     return (
-      <div style={{ maxWidth: '400px', margin: '0 auto' }}>
-        <div style={{
-          background: '#fff', borderRadius: '12px', padding: '24px',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.08)', border: '1px solid #e2e8f0',
-          textAlign: 'center',
-        }}>
-          <div style={{ fontSize: '40px', marginBottom: '12px' }}>📧</div>
-          <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#2d3748' }}>Setup Email Sent</h2>
-          <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#718096' }}>
+      <div className={styles.wrapper}>
+        <div className={styles.cardCentered}>
+          <div className={styles.doneIcon}>📧</div>
+          <h2 className={styles.doneTitle}>Setup Email Sent</h2>
+          <p className={styles.doneText}>
             A temporary password has been sent to <strong>{username}@comiccache.local</strong>.
           </p>
-          <button onClick={onCancel}
-            style={{
-              padding: '10px 24px', fontSize: '15px', fontWeight: 600,
-              background: '#e53e3e', color: '#fff', border: 'none', borderRadius: '8px',
-              cursor: 'pointer',
-            }}
-          >
+          <button onClick={onCancel} className={styles.btnDone}>
             Back to Dashboard
           </button>
         </div>
@@ -66,61 +57,39 @@ export default function RegisterScreen({ onRegistered, onCancel }) {
   }
 
   return (
-    <div style={{ maxWidth: '400px', margin: '0 auto' }}>
-      <div style={{
-        background: '#fff', borderRadius: '12px', padding: '24px',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.08)', border: '1px solid #e2e8f0',
-      }}>
-        <h2 style={{ margin: '0 0 4px 0', fontSize: '20px', color: '#2d3748' }}>Add Staff Account</h2>
-        <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: '#718096' }}>Create a new employee login. Setup instructions will be sent to their email.</p>
+    <div className={styles.wrapper}>
+      <div className={styles.card}>
+        <h2 className={styles.formTitle}>Add Staff Account</h2>
+        <p className={styles.formDesc}>Create a new employee login. Setup instructions will be sent to their email.</p>
 
         {error && (
-          <div style={{
-            background: '#fff5f5', color: '#c53030', padding: '10px 14px',
-            borderRadius: '8px', fontSize: '14px', marginBottom: '16px',
-            border: '1px solid #fed7d7',
-          }}>
+          <div className={styles.error}>
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <form onSubmit={handleSubmit} className={styles.form}>
           <input
             type="text" placeholder="Username" value={username}
             onChange={e => setUsername(e.target.value)} required autoFocus
-            style={{
-              width: '100%', padding: '12px 14px', fontSize: '15px',
-              border: '2px solid #e2e8f0', borderRadius: '8px', boxSizing: 'border-box',
-            }}
+            className={styles.input}
           />
           <select value={roleId} onChange={e => setRoleId(parseInt(e.target.value))}
-            style={{
-              width: '100%', padding: '12px 14px', fontSize: '15px',
-              border: '2px solid #e2e8f0', borderRadius: '8px', boxSizing: 'border-box',
-              background: '#fff',
-            }}>
+            className={styles.input}>
             {roles.map(r => (
               <option key={r.id} value={r.id}>
                 {r.display_name} ({r.name})
               </option>
             ))}
           </select>
-          <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+          <div className={styles.buttonRow}>
             <button type="button" onClick={onCancel}
-              style={{
-                flex: 1, padding: '12px', fontSize: '15px', fontWeight: 600,
-                background: '#edf2f7', color: '#4a5568', border: 'none', borderRadius: '8px',
-                cursor: 'pointer',
-              }}
+              className={`${styles.btn} ${styles.btnCancel}`}
             >
               Cancel
             </button>
             <button type="submit" disabled={loading}
-              style={{
-                flex: 1, padding: '12px', fontSize: '15px', fontWeight: 'bold',
-                background: '#e53e3e', color: '#fff', border: 'none', borderRadius: '8px',
-                cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1,
-              }}
+              className={`${styles.btn} ${styles.btnSubmit}`}
             >
               {loading ? 'Sending...' : 'Send Setup Email'}
             </button>

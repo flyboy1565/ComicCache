@@ -1,0 +1,17 @@
+@keyframes pulse {
+  0% { opacity: 0.3; }
+  50% { opacity: 0.7; }
+  100% { opacity: 0.3; }
+}
+
+.wrapper {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 8px;
+  vertical-align: middle;
+}
+
+.skeleton {
+  background: var(--color-surface-hover, #e2e8f0);
+  animation: pulse 1.5s ease-in-out infinite;
+}

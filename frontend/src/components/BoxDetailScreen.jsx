@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { fetchBoxComics } from '../utilities/api';
 import ComicDetailModal from './ComicDetailModal';
 import ComicBubbleIcon from './ComicBubbleIcon';
+import Skeleton from './Skeleton';
+import styles from './BoxDetailScreen.module.css';
 
 export default function BoxDetailScreen({ box, onBack, onViewSeries, onAddToPicklist }) {
   const [comics, setComics] = useState([]);
@@ -21,27 +23,17 @@ export default function BoxDetailScreen({ box, onBack, onViewSeries, onAddToPick
   };
 
   return (
-    <div style={{ paddingBottom: '80px' }}>
-      {/* Header with back button */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-        <button
-          onClick={onBack}
-          style={{
-            background: '#edf2f7', border: 'none', borderRadius: '8px',
-            padding: '8px 12px', fontSize: '14px', cursor: 'pointer',
-            fontWeight: 'bold', color: '#4a5568',
-          }}
-        >
-          ← Back
-        </button>
-        <div>
-          <h3 style={{ margin: 0, color: '#2d3748', fontSize: '18px' }}>{box.name}</h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-            <span style={{ background: '#edf2f7', color: '#4a5568', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}>
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <button onClick={onBack} className={styles.backBtn}>←</button>
+        <div className={styles.headerTitleBlock}>
+          <h3 className={styles.boxName}>{box.name}</h3>
+          <div className={styles.metaRow}>
+            <span className={styles.locationBadge}>
               📍 {box.location}
             </span>
             {!loading && (
-              <span style={{ fontSize: '13px', color: '#718096' }}>
+              <span className={styles.issueCount}>
                 {comics.length} {comics.length === 1 ? 'issue' : 'issues'}
               </span>
             )}
@@ -49,89 +41,58 @@ export default function BoxDetailScreen({ box, onBack, onViewSeries, onAddToPick
         </div>
       </div>
 
-      {/* Loading state */}
       {loading && (
-        <div style={{ textAlign: 'center', padding: '40px 0', color: '#718096', fontSize: '14px', fontStyle: 'italic' }}>
-          Loading inventory...
+        <div className={styles.loadingState}>
+          <Skeleton width="100%" height={48} count={6} />
         </div>
       )}
 
-      {/* Empty state */}
       {!loading && comics.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '40px 0', color: '#a0aec0', fontSize: '14px', fontStyle: 'italic' }}>
+        <div className={styles.emptyState}>
           This container is empty. Scan some comics into it!
         </div>
       )}
 
-      {/* Comic list */}
       {!loading && comics.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div className={styles.comicList}>
           {comics.map(comic => (
-            <div
-              key={comic.id}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '10px',
-                padding: '12px', background: '#fff',
-                border: '1px solid #e2e8f0', borderRadius: '8px',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
-              }}
-            >
-              {/* Cover thumbnail */}
-              <div style={{
-                width: '36px', height: '52px', borderRadius: '4px', overflow: 'hidden',
-                background: '#e2e8f0', display: 'flex', alignItems: 'center',
-                justifyContent: 'center', flexShrink: 0,
-              }}>
+            <div key={comic.id} className={styles.comicRow}>
+              <div className={styles.coverThumb}>
                 {comic.cover_image ? (
-                  <img src={comic.cover_image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={comic.cover_image} alt="" />
                 ) : (
                   <ComicBubbleIcon size={16} color="#a0aec0" />
                 )}
               </div>
 
-              {/* Title / Issue / Publisher */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 'bold', color: '#2d3748', fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <div className={styles.comicInfo}>
+                <div className={styles.comicTitle}>
                   {comic.title} #{comic.issue_number}
                 </div>
-                <div style={{ fontSize: '11px', color: '#718096' }}>
+                <div className={styles.comicPublisher}>
                   {comic.publisher}
                 </div>
               </div>
 
-              {/* Value */}
-              <div style={{ fontWeight: 'bold', color: '#2f855a', fontSize: '14px', textAlign: 'right', flexShrink: 0, marginRight: '8px' }}>
+              <div className={styles.comicValue}>
                 ${comic.estimated_value.toFixed(2)}
               </div>
 
-              {/* Action buttons */}
               <button
                 onClick={() => onAddToPicklist({ title: comic.title, issue_number: comic.issue_number, publisher: comic.publisher })}
-                style={{
-                  background: '#faf5ff', border: 'none', borderRadius: '6px',
-                  padding: '6px 8px', fontSize: '12px', cursor: 'pointer',
-                  fontWeight: 'bold', color: '#805ad5', whiteSpace: 'nowrap',
-                }}
+                className={`${styles.actionBtn} ${styles.picklistBtn}`}
               >
                 📋
               </button>
               <button
                 onClick={() => setSelectedComic(comic)}
-                style={{
-                  background: '#edf2f7', border: 'none', borderRadius: '6px',
-                  padding: '6px 10px', fontSize: '12px', cursor: 'pointer',
-                  fontWeight: 'bold', color: '#4a5568', whiteSpace: 'nowrap',
-                }}
+                className={`${styles.actionBtn} ${styles.viewBtn}`}
               >
                 👁 View
               </button>
               <button
                 onClick={() => handleViewSeries(comic.title, comic.publisher)}
-                style={{
-                  background: '#ebf8ff', border: 'none', borderRadius: '6px',
-                  padding: '6px 10px', fontSize: '12px', cursor: 'pointer',
-                  fontWeight: 'bold', color: '#3182ce', whiteSpace: 'nowrap',
-                }}
+                className={`${styles.actionBtn} ${styles.seriesBtn}`}
               >
                 📚 Series
               </button>
@@ -140,7 +101,6 @@ export default function BoxDetailScreen({ box, onBack, onViewSeries, onAddToPick
         </div>
       )}
 
-      {/* Comic detail modal */}
       {selectedComic && (
         <ComicDetailModal
           comic={selectedComic}

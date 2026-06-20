@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { changePassword } from '../utilities/api';
+import styles from './SetPasswordScreen.module.css';
 
 export default function SetPasswordScreen({ user, onComplete }) {
   const [currentPassword, setCurrentPassword] = useState('');
@@ -28,61 +29,36 @@ export default function SetPasswordScreen({ user, onComplete }) {
   };
 
   return (
-    <div style={{
-      maxWidth: '400px', margin: '80px auto 0', padding: '30px',
-      fontFamily: 'sans-serif',
-    }}>
-      <div style={{
-        background: '#fff', borderRadius: '12px', padding: '24px',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.08)', border: '1px solid #e2e8f0',
-      }}>
-        <h2 style={{ margin: '0 0 4px 0', fontSize: '20px', color: '#2d3748' }}>Set Your Password</h2>
-        <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: '#718096' }}>
+    <div className={styles.container}>
+      <div className={styles.card}>
+        <h2 className={styles.formTitle}>Set Your Password</h2>
+        <p className={styles.formDesc}>
           Welcome, <strong>{user.username}</strong>! You need to set a new password before continuing.
         </p>
 
         {error && (
-          <div style={{
-            background: '#fff5f5', color: '#c53030', padding: '10px 14px',
-            borderRadius: '8px', fontSize: '14px', marginBottom: '16px',
-            border: '1px solid #fed7d7',
-          }}>
+          <div className={styles.error}>
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <form onSubmit={handleSubmit} className={styles.form}>
           <input
             type="password" placeholder="Temporary password" value={currentPassword}
             onChange={e => setCurrentPassword(e.target.value)} required autoFocus
-            style={{
-              width: '100%', padding: '12px 14px', fontSize: '15px',
-              border: '2px solid #e2e8f0', borderRadius: '8px', boxSizing: 'border-box',
-            }}
+            className={styles.input}
           />
           <input
             type="password" placeholder="New password" value={newPassword}
             onChange={e => setNewPassword(e.target.value)} required
-            style={{
-              width: '100%', padding: '12px 14px', fontSize: '15px',
-              border: '2px solid #e2e8f0', borderRadius: '8px', boxSizing: 'border-box',
-            }}
+            className={styles.input}
           />
           <input
             type="password" placeholder="Confirm new password" value={confirm}
             onChange={e => setConfirm(e.target.value)} required
-            style={{
-              width: '100%', padding: '12px 14px', fontSize: '15px',
-              border: '2px solid #e2e8f0', borderRadius: '8px', boxSizing: 'border-box',
-            }}
+            className={styles.input}
           />
-          <button type="submit" disabled={loading}
-            style={{
-              width: '100%', padding: '12px', fontSize: '15px', fontWeight: 'bold',
-              background: '#e53e3e', color: '#fff', border: 'none', borderRadius: '8px',
-              cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1,
-            }}
-          >
+          <button type="submit" disabled={loading} className={styles.submitBtn}>
             {loading ? 'Setting password...' : 'Set Password'}
           </button>
         </form>

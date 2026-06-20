@@ -1,0 +1,247 @@
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  z-index: 9998;
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 420px;
+  max-width: 90vw;
+  height: 100vh;
+  height: 100dvh;
+  background: var(--color-bg-dark);
+  box-shadow: -4px 0 25px rgba(0, 0, 0, 0.3);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  font-family: system-ui, sans-serif;
+  color: #fff;
+  animation: slideIn 0.2s ease-out;
+}
+
+.drawerHeader {
+  padding: var(--space-xl);
+  padding-top: calc(var(--space-xl) + var(--safe-top));
+  border-bottom: 1px solid #2d3748;
+  background: #232d3f;
+}
+
+.headerTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.wantLabel {
+  font-size: var(--font-xs);
+  color: var(--color-text-light);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.drawerTitle {
+  margin: 4px 0 0 0;
+  font-size: var(--font-2xl);
+  color: #fff;
+  font-weight: 700;
+}
+
+.closeBtn {
+  min-height: var(--touch-target);
+  min-width: var(--touch-target);
+  padding: 8px 12px;
+  font-size: var(--font-xl);
+  background: #2d3748;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--color-text-light);
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.closeBtn:active {
+  background: #4a5568;
+}
+
+.itemsArea {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--space-xl);
+  padding-bottom: calc(var(--space-xl) + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--color-bg-dark);
+}
+
+.loadingText,
+.emptyText {
+  text-align: center;
+  padding: 40px 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-base);
+}
+
+.emptyText {
+  color: var(--color-text-light);
+  font-size: var(--font-md);
+  font-style: italic;
+}
+
+.emptyHint {
+  margin-top: var(--space-sm);
+  font-size: var(--font-sm);
+  color: var(--color-text-muted);
+}
+
+.itemCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  background: #2d3748;
+  border: 1px solid #4a5568;
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+}
+
+.itemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.itemInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.itemName {
+  font-weight: bold;
+  font-size: var(--font-base);
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.itemPublisher {
+  font-size: var(--font-xs);
+  color: var(--color-text-light);
+  margin-top: 2px;
+}
+
+.statusBadge {
+  font-size: 10px;
+  font-weight: bold;
+  padding: 2px var(--space-sm);
+  border-radius: var(--radius-sm);
+  color: #fff;
+  white-space: nowrap;
+  margin-left: var(--space-sm);
+  flex-shrink: 0;
+}
+
+.statusFound {
+  background: #2f855a;
+}
+
+.statusLooking {
+  background: #9b2c2c;
+}
+
+.itemNote {
+  font-size: var(--font-sm);
+  color: var(--color-text-on-dark);
+  font-style: italic;
+}
+
+.itemDate {
+  font-size: var(--font-xs);
+  color: var(--color-text-muted);
+}
+
+.actionsRow {
+  display: flex;
+  gap: 6px;
+  margin-top: var(--space-xs);
+}
+
+.actionBtn {
+  flex: 1;
+  min-height: var(--touch-target);
+  padding: 8px;
+  border-radius: 6px;
+  border: none;
+  font-size: var(--font-sm);
+  font-weight: bold;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.actionBtn:active {
+  transform: scale(0.97);
+}
+
+.markFound {
+  background: #2f855a;
+  color: #fff;
+}
+
+.markLooking {
+  background: #744210;
+  color: #fff;
+}
+
+.removeBtn {
+  min-height: var(--touch-target);
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: none;
+  font-size: var(--font-sm);
+  font-weight: bold;
+  cursor: pointer;
+  background: #9b2c2c;
+  color: #fff;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.removeBtn:active {
+  transform: scale(0.97);
+}
+
+.clearAllBtn {
+  width: 100%;
+  min-height: var(--touch-target);
+  padding: 10px;
+  margin-top: 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid #9b2c2c;
+  background: transparent;
+  color: #fc8181;
+  font-size: var(--font-md);
+  font-weight: bold;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.clearAllBtn:active {
+  background: rgba(155, 44, 44, 0.2);
+}

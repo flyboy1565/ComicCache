@@ -1,0 +1,56 @@
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.container {
+  position: fixed;
+  top: calc(20px + var(--safe-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  color: #fff;
+  padding: var(--space-md) var(--space-xl);
+  border-radius: var(--radius-md);
+  font-size: var(--font-base);
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  max-width: 90vw;
+  pointer-events: auto;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.success {
+  background: var(--color-green);
+  border: 1px solid #38a169;
+}
+
+.error {
+  background: #fc8181;
+  border: 1px solid var(--color-danger);
+}
+
+.messageText {
+  flex: 1;
+}
+
+.dismissBtn {
+  min-height: var(--touch-target);
+  min-width: var(--touch-target);
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: var(--font-xl);
+  padding: 0;
+  line-height: 1;
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}

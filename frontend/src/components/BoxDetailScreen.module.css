@@ -1,0 +1,196 @@
+.container {
+  padding-bottom: 80px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-md) 0;
+  margin-bottom: var(--space-lg);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 10;
+}
+
+.backBtn {
+  min-height: var(--touch-target);
+  min-width: var(--touch-target);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  border: none;
+  cursor: pointer;
+  background: none;
+  color: var(--color-primary);
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+
+.backBtn:active {
+  opacity: 0.6;
+}
+
+.headerTitleBlock {
+  flex: 1;
+  min-width: 0;
+}
+
+.boxName {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 18px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: 2px;
+}
+
+.locationBadge {
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+  padding: 2px var(--space-sm);
+  border-radius: var(--radius-xl);
+  font-size: var(--font-xs);
+  font-weight: bold;
+}
+
+.issueCount {
+  font-size: var(--font-md);
+  color: var(--color-text-muted);
+}
+
+.loadingState {
+  padding: var(--space-md) 0;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 40px 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-base);
+  font-style: italic;
+}
+
+.comicList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.comicRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: var(--space-md);
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+}
+
+.coverThumb {
+  width: 36px;
+  height: 52px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.coverThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.comicInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.comicTitle {
+  font-weight: bold;
+  color: var(--color-text);
+  font-size: var(--font-base);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.comicPublisher {
+  font-size: var(--font-xs);
+  color: var(--color-text-muted);
+}
+
+.comicValue {
+  font-weight: bold;
+  color: #2f855a;
+  font-size: var(--font-base);
+  text-align: right;
+  flex-shrink: 0;
+  margin-right: var(--space-sm);
+}
+
+.actionBtn {
+  min-height: var(--touch-target);
+  min-width: var(--touch-target);
+  padding: 8px 10px;
+  font-size: var(--font-sm);
+  font-weight: bold;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.actionBtn:active {
+  transform: scale(0.95);
+}
+
+.picklistBtn {
+  background: #faf5ff;
+  color: var(--color-purple);
+}
+
+.viewBtn {
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+}
+
+.seriesBtn {
+  background: #ebf8ff;
+  color: var(--color-blue);
+}
+
+@media (max-width: 480px) {
+  .header {
+    padding: var(--space-sm) 0;
+  }
+
+  .comicRow {
+    gap: 6px;
+    padding: 10px;
+  }
+
+  .actionBtn {
+    padding: 6px 8px;
+    font-size: var(--font-xs);
+  }
+}
