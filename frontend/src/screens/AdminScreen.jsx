@@ -115,6 +115,10 @@ export default function AdminScreen({ user, onBack }) {
           className={`${styles.tabBtn} ${tab === 'roles' ? `${styles.tabActive} ${styles.tabRolesActive}` : styles.tabInactive}`}>
           Roles
         </button>
+        <button onClick={() => { setTab('inventory'); if (!stats) loadStats(); }}
+          className={`${styles.tabBtn} ${tab === 'inventory' ? `${styles.tabActive} ${styles.tabStatsActive}` : styles.tabInactive}`}>
+          Inventory
+        </button>
         <button onClick={() => { setTab('stats'); if (!stats) loadStats(); }}
           className={`${styles.tabBtn} ${tab === 'stats' ? `${styles.tabActive} ${styles.tabStatsActive}` : styles.tabInactive}`}>
           Stats
@@ -230,6 +234,101 @@ export default function AdminScreen({ user, onBack }) {
         </>
       )}
 
+      {tab === 'inventory' && (
+        <div>
+          {statsLoading ? (
+            <div className={styles.loadingText}><Skeleton width="100%" height={24} count={5} /></div>
+          ) : !stats ? (
+            <div className={styles.emptyText}>Could not load stats.</div>
+          ) : (
+            <div className={styles.statsSection}>
+              <div className={styles.statCard}>
+                <h3 className={styles.statCardTitle}>
+                  💰 Highest Value Comics
+                </h3>
+                {stats.highest_value && stats.highest_value.length > 0 ? (
+                  <div>
+                    {stats.highest_value.map((item, i) => (
+                      <div key={i} className={`${styles.statItemStacked} ${i % 2 === 0 ? styles.statItemEven : styles.statItemOdd}`}>
+                        <div className={styles.statItemTop}>
+                          <span className={styles.statRank}>#{i + 1}</span>
+                          <span className={styles.statTitle}>
+                            {item.title} <span style={{ color: '#718096' }}>#{item.issue_number}</span>
+                          </span>
+                          <span className={styles.statCount}>
+                            ${item.estimated_value?.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className={styles.statItemBottom}>
+                          <span className={styles.statPublisher}>{item.publisher}</span>
+                          <span className={styles.statBox}>📦 {item.box_name || '—'}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className={styles.emptyText}>No comics in collection yet.</div>
+                )}
+              </div>
+
+              <div className={styles.statCard}>
+                <h3 className={styles.statCardTitle}>
+                  ⏳ Longest in Inventory
+                </h3>
+                {stats.oldest_comics.length === 0 ? (
+                  <div className={styles.emptyText}>No comics in collection yet.</div>
+                ) : (
+                  <div>
+                    {stats.oldest_comics.map((item, i) => (
+                      <div key={i} className={`${styles.statItemStacked} ${i % 2 === 0 ? styles.statItemEven : styles.statItemOdd}`}>
+                        <div className={styles.statItemTop}>
+                          <span className={styles.statRank}>#{i + 1}</span>
+                          <span className={styles.statTitle}>
+                            {item.title} <span style={{ color: '#718096' }}>#{item.issue_number}</span>
+                          </span>
+                          <span className={styles.statDate}>
+                            📅 {item.date_scanned ? new Date(item.date_scanned).toLocaleDateString() : '—'}
+                          </span>
+                          <span className={styles.statCount}>
+                            ${item.estimated_value?.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className={styles.statItemBottom}>
+                          <span className={styles.statPublisher}>{item.publisher}</span>
+                          <span className={styles.statBox}>📦 {item.box_name || '—'}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className={styles.statCard}>
+                <h3 className={styles.statCardTitle}>
+                  🔍 Most Requested Issues
+                </h3>
+                {stats.top_searched.length === 0 ? (
+                  <div className={styles.emptyText}>No cover lookups yet.</div>
+                ) : (
+                  <div>
+                    {stats.top_searched.map((item, i) => (
+                      <div key={i} className={`${styles.statItem} ${i % 2 === 0 ? styles.statItemEven : styles.statItemOdd}`}>
+                        <span className={styles.statRank}>#{i + 1}</span>
+                        <span className={styles.statTitle}>
+                          {item.series_title} <span style={{ color: '#718096' }}>#{item.issue_number}</span>
+                        </span>
+                        <span className={styles.statPublisher}>{item.publisher}</span>
+                        <span className={styles.statCount}>🔍 {item.hit_count}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {tab === 'stats' && (
         <div>
           {statsLoading ? (
@@ -269,18 +368,20 @@ export default function AdminScreen({ user, onBack }) {
                 ) : (
                   <div>
                     {stats.oldest_comics.map((item, i) => (
-                      <div key={i} className={`${styles.statItem} ${i % 2 === 0 ? styles.statItemEven : styles.statItemOdd}`}>
-                        <span className={styles.statRank}>#{i + 1}</span>
-                        <span className={styles.statTitle}>
-                          {item.title} <span style={{ color: '#718096' }}>#{item.issue_number}</span>
-                        </span>
-                        <span className={styles.statPublisher}>{item.publisher}</span>
-                        <span style={{ color: '#718096', fontSize: '12px', width: '140px', textAlign: 'right', flexShrink: 0 }}>
-                          📦 {item.box_name || '—'}
-                        </span>
-                        <span className={styles.statDate}>
-                          📅 {item.date_scanned ? new Date(item.date_scanned).toLocaleDateString() : '—'}
-                        </span>
+                      <div key={i} className={`${styles.statItemStacked} ${i % 2 === 0 ? styles.statItemEven : styles.statItemOdd}`}>
+                        <div className={styles.statItemTop}>
+                          <span className={styles.statRank}>#{i + 1}</span>
+                          <span className={styles.statTitle}>
+                            {item.title} <span style={{ color: '#718096' }}>#{item.issue_number}</span>
+                          </span>
+                          <span className={styles.statDate}>
+                            📅 {item.date_scanned ? new Date(item.date_scanned).toLocaleDateString() : '—'}
+                          </span>
+                        </div>
+                        <div className={styles.statItemBottom}>
+                          <span className={styles.statPublisher}>{item.publisher}</span>
+                          <span className={styles.statBox}>📦 {item.box_name || '—'}</span>
+                        </div>
                       </div>
                     ))}
                   </div>

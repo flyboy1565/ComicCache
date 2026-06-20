@@ -736,6 +736,10 @@ def get_admin_stats(session: Session = Depends(get_session), current_user: User 
         select(Comic).order_by(Comic.date_scanned.asc()).limit(10)
     ).all()
 
+    highest_value = session.exec(
+        select(Comic).order_by(Comic.estimated_value.desc()).limit(10)
+    ).all()
+
     return {
         "top_searched": [
             {
@@ -751,10 +755,22 @@ def get_admin_stats(session: Session = Depends(get_session), current_user: User 
                 "title": c.title,
                 "issue_number": c.issue_number,
                 "publisher": c.publisher,
+                "estimated_value": c.estimated_value,
                 "date_scanned": c.date_scanned.isoformat() if c.date_scanned else None,
                 "box_name": c.box.name if c.box else None,
             }
             for c in oldest_comics
+        ],
+        "highest_value": [
+            {
+                "title": c.title,
+                "issue_number": c.issue_number,
+                "publisher": c.publisher,
+                "estimated_value": c.estimated_value,
+                "date_scanned": c.date_scanned.isoformat() if c.date_scanned else None,
+                "box_name": c.box.name if c.box else None,
+            }
+            for c in highest_value
         ],
     }
 

@@ -355,12 +355,35 @@
   font-size: var(--font-md);
 }
 
+.statItemStacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1px;
+  padding: var(--space-sm) 10px;
+  border-radius: 6px;
+  font-size: var(--font-md);
+}
+
 .statItemEven {
   background: var(--color-bg-light);
 }
 
 .statItemOdd {
   background: #fff;
+}
+
+.statItemTop {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.statItemBottom {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding-left: 28px;
+  flex-wrap: wrap;
 }
 
 .statRank {
@@ -373,15 +396,22 @@
 
 .statTitle {
   flex: 1;
+  min-width: 0;
   font-weight: 600;
   color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .statPublisher {
   color: var(--color-text-muted);
-  font-size: var(--font-sm);
-  width: 100px;
-  flex-shrink: 0;
+  font-size: var(--font-xs);
+}
+
+.statBox {
+  color: var(--color-text-muted);
+  font-size: var(--font-xs);
 }
 
 .statCount {
@@ -396,7 +426,7 @@
   font-weight: 600;
   color: var(--color-text-secondary);
   font-size: var(--font-sm);
-  min-width: 90px;
+  min-width: 80px;
   text-align: right;
   flex-shrink: 0;
 }
@@ -524,5 +554,28 @@
 
   .permModal {
     padding: var(--space-lg);
+  }
+
+  .statRank {
+    width: 16px;
+    font-size: var(--font-sm);
+  }
+
+  .statTitle {
+    font-size: var(--font-sm);
+  }
+
+  .statCount {
+    min-width: 40px;
+    font-size: var(--font-sm);
+  }
+
+  .statDate {
+    min-width: 60px;
+    font-size: var(--font-xs);
+  }
+
+  .statItemBottom {
+    padding-left: 22px;
   }
 }

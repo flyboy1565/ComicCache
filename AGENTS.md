@@ -24,11 +24,24 @@
 - [x] B3: Swipe-to-close on PicklistDrawer (swipe right >80px), SeriesVolumeViewer (swipe right >80px), ComicDetailModal (swipe down >100px)
 - [x] Build verified — compiles clean
 
-## Phase C — PWA & Polish (In Progress)
+## Phase C — PWA & Polish (Complete)
 
 ### Completed
 - [x] C1: `manifest.json` — web app manifest via `vite-plugin-pwa`, standalone display, theme-color, SVG icons
 - [x] C2: Service worker — auto-generated via `vite-plugin-pwa` using Workbox (NetworkFirst for `/api/*`, cache-first for assets), auto-update on refresh
 - [x] C3: Loading skeletons — `Skeleton.jsx` component with CSS pulse animation, replaces all inline "Loading..." italic text states across App.jsx, BoxDetailScreen, PicklistDrawer, SeriesVolumeViewer, AdminScreen
 - [x] Build verified — compiles clean, PWA generates `sw.js`, `workbox-*.js`, `manifest.webmanifest`, `registerSW.js`
+
+## Phase D — Admin Inventory Tools (Complete)
+
+### Completed
+- [x] D1: Backend — `highest_value` query (top 10 by `estimated_value` DESC) + `estimated_value` field on `oldest_comics` output
+- [x] D2: Frontend — New "Inventory" tab between "Roles" and "Stats" with 3 stat cards (Highest Value, Longest in Inventory, Most Requested Issues)
+- [x] Build verified — both frontend and backend compile clean
+
+### Files changed
+| File | Change |
+|---|---|
+| `backend/main.py:729-770` | Added `highest_value` query + `estimated_value` to `oldest_comics` + new `highest_value` response section |
+| `frontend/src/screens/AdminScreen.jsx` | Added "Inventory" tab button + `tab === 'inventory'` section with 3 reusable stat cards |
 
