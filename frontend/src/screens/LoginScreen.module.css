@@ -22,13 +22,36 @@
 }
 
 .error {
-  background: var(--color-danger-bg);
-  color: #c53030;
-  padding: 10px 14px;
-  border-radius: var(--radius-md);
+  background: #1a1a2e;
+  color: #fff;
+  padding: 12px 14px;
+  border-radius: 4px;
   font-size: var(--font-base);
   margin-bottom: 16px;
-  border: 1px solid #fed7d7;
+  border: 3px solid #e53e3e;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 4px 4px 0 rgba(229,62,62,0.3);
+  position: relative;
+}
+
+.errorSfx {
+  background: #e53e3e;
+  color: #fff;
+  font-weight: 900;
+  font-size: 11px;
+  letter-spacing: 2px;
+  padding: 3px 6px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.errorText {
+  color: #fed7d7;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.5px;
 }
 
 .form {

@@ -8,6 +8,17 @@ export default function LoginScreen({ onLogin }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const FAIL_PHRASES = [
+    'Login has failed this city!',
+    'POW! Authentication missed!',
+    'BAM! Wrong credentials, chump!',
+    'KAPOW! That password is toast!',
+    'WHAM! Access denied!',
+    'ZAP! Identity crisis!',
+    'THWIP! No dice, true believer!',
+    'BLAM! Server says no!',
+  ];
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -17,7 +28,8 @@ export default function LoginScreen({ onLogin }) {
       setToken(data.access_token);
       onLogin(data.user, data.password_change_required);
     } catch (err) {
-      setError(err.message || 'Unable to connect to server');
+      const phrase = FAIL_PHRASES[Math.floor(Math.random() * FAIL_PHRASES.length)];
+      setError(phrase);
     } finally {
       setLoading(false);
     }
@@ -34,7 +46,8 @@ export default function LoginScreen({ onLogin }) {
 
       {error && (
         <div className={styles.error}>
-          {error}
+          <span className={styles.errorSfx}>FAIL</span>
+          <span className={styles.errorText}>{error}</span>
         </div>
       )}
 
