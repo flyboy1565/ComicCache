@@ -1,0 +1,123 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100dvh;
+  gap: 32px;
+  background: var(--color-bg, #f8fafc);
+}
+
+.book {
+  position: relative;
+  width: 120px;
+  height: 160px;
+  perspective: 800px;
+}
+
+.cover {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--color-primary, #e53e3e) 0%, #c53030 100%);
+  border-radius: 4px 8px 8px 4px;
+  display: flex;
+  align-items: center;
+  z-index: 5;
+  transform-origin: left center;
+  animation: coverOpen 2s ease-in-out infinite;
+  box-shadow: 2px 2px 12px rgba(0,0,0,0.2);
+  overflow: hidden;
+}
+
+.coverSpine {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  background: rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: rgba(255,255,255,0.8);
+}
+
+.coverTitle {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding-left: 20px;
+}
+
+.coverLine1 {
+  font-size: 14px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 3px;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+.coverLine2 {
+  font-size: 16px;
+  font-weight: 900;
+  color: #fbd38d;
+  letter-spacing: 4px;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+.page {
+  position: absolute;
+  inset: 2px;
+  background: #fff;
+  border-radius: 0 6px 6px 0;
+  transform-origin: left center;
+  box-shadow: 1px 1px 4px rgba(0,0,0,0.08);
+  z-index: 4;
+  animation: pageFlip 2s ease-in-out infinite;
+}
+
+.page2 {
+  z-index: 3;
+  animation-delay: 0.15s;
+}
+
+.page3 {
+  z-index: 2;
+  animation-delay: 0.3s;
+}
+
+.page4 {
+  z-index: 1;
+  animation-delay: 0.45s;
+}
+
+@keyframes coverOpen {
+  0%, 100% { transform: rotateY(0deg); }
+  20% { transform: rotateY(-160deg); }
+  40% { transform: rotateY(-160deg); }
+  60% { transform: rotateY(0deg); }
+}
+
+@keyframes pageFlip {
+  0%, 100% { transform: rotateY(0deg); }
+  20% { transform: rotateY(-150deg); }
+  40% { transform: rotateY(-150deg); }
+  60% { transform: rotateY(0deg); }
+}
+
+.loadingText {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--color-text-muted, #718096);
+  letter-spacing: 4px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}

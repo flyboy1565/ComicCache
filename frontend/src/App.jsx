@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import LoginScreen from './screens/LoginScreen';
 import SetPasswordScreen from './screens/SetPasswordScreen';
 import DashboardScreen from './screens/DashboardScreen';
-import Skeleton from './components/Skeleton';
+import ComicBookLoader from './components/ComicBookLoader';
 import { getToken, fetchMe, clearToken } from './utilities/api';
 import './themes.css';
 
@@ -72,11 +72,7 @@ export default function App() {
   };
 
   if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100dvh' }}>
-        <Skeleton width={200} height={24} />
-      </div>
-    );
+    return <ComicBookLoader />;
   }
 
   if (!user) {
