@@ -254,6 +254,64 @@ export async function updateUserPermissions(userId, overrides) {
 
 // --- REGISTER WITH ROLE ---
 
+export async function importCsv(file, boxId, createBox) {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (boxId) formData.append('box_id', boxId);
+  if (createBox) formData.append('create_box', createBox);
+  const res = await authFetch(`${API_BASE_URL}/import/csv`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || "CSV import failed");
+  }
+  return res.json();
+}
+
+export async function importComicRack(file, boxId, createBox) {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (boxId) formData.append('box_id', boxId);
+  if (createBox) formData.append('create_box', createBox);
+  const res = await authFetch(`${API_BASE_URL}/import/comicrack`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || "ComicRack import failed");
+  }
+  return res.json();
+}
+
+export async function searchComicVineSeries(query, publisher, limit = 15) {
+  const params = new URLSearchParams({ query, limit });
+  if (publisher) params.append('publisher', publisher);
+  const res = await fetch(`${API_BASE_URL}/comicvine/series?${params}`);
+  if (!res.ok) throw new Error("Failed to search ComicVine");
+  return res.json();
+}
+
+export async function fetchComicVineIssues(volumeId, limit = 100) {
+  const res = await fetch(`${API_BASE_URL}/comicvine/series/${volumeId}/issues?limit=${limit}`);
+  if (!res.ok) throw new Error("Failed to fetch issues");
+  return res.json();
+}
+
+export async function importComicVineIssues(payload) {
+  const res = await authFetch(`${API_BASE_URL}/comicvine/import`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || "ComicVine import failed");
+  }
+  return res.json();
+}
+
 export async function registerWithRole(username, roleId) {
   const res = await authFetch(`${API_BASE_URL}/auth/register`, {
     method: 'POST',

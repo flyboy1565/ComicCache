@@ -8,6 +8,7 @@ import UserPanel from '../components/UserPanel';
 import RegisterScreen from '../screens/RegisterScreen';
 import AdminScreen from '../screens/AdminScreen';
 import BottomNav from '../components/BottomNav';
+import ComicVineBrowser from '../components/ComicVineBrowser';
 import { fetchBoxes, fetchValuation, createBox, searchComics, addToPicklist } from '../utilities/api';
 import styles from './DashboardScreen.module.css';
 
@@ -71,6 +72,7 @@ export default function DashboardScreen({ user, onLogout, theme, onThemeChange }
 
   const handleCancelRegister = () => setCurrentView('dashboard');
 
+  const [isComicVineBrowserOpen, setIsComicVineBrowserOpen] = useState(false);
   const [isPicklistOpen, setIsPicklistOpen] = useState(false);
   const [bottomNavTab, setBottomNavTab] = useState('home');
   const [picklistCount, setPicklistCount] = useState(() => {
@@ -274,6 +276,11 @@ export default function DashboardScreen({ user, onLogout, theme, onThemeChange }
             </button>
           )}
         </div>
+        <div className={styles.browseRow}>
+          <button onClick={() => setIsComicVineBrowserOpen(true)} className={styles.browseBtn}>
+            🌐 Browse ComicVine
+          </button>
+        </div>
       </section>
 
       {globalSearchQuery.trim().length >= 2 && (
@@ -452,6 +459,10 @@ export default function DashboardScreen({ user, onLogout, theme, onThemeChange }
             )}
           </div>
         </div>
+      )}
+
+      {isComicVineBrowserOpen && (
+        <ComicVineBrowser onClose={() => { setIsComicVineBrowserOpen(false); }} showToast={showToast} />
       )}
 
       {isPicklistOpen && (

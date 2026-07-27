@@ -538,6 +538,129 @@
   background: #e2e8f0;
 }
 
+/* ── Import Tab ── */
+.importSubTabs {
+  display: flex;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+
+.importSubTab {
+  min-height: var(--touch-target);
+  padding: 10px 16px;
+  font-size: var(--font-base);
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.importSubTab:active {
+  transform: scale(0.97);
+}
+
+.importSubTabActive {
+  background: #2b6cb0;
+  color: #fff;
+}
+
+.importForm {
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.importLabel {
+  font-weight: 600;
+  font-size: var(--font-base);
+  color: var(--color-text-secondary);
+}
+
+.importSelect,
+.importInput {
+  width: 100%;
+  min-height: var(--touch-target);
+  padding: 10px;
+  font-size: var(--font-base);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.importOr {
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--font-sm);
+  font-weight: 600;
+}
+
+.importFileInput {
+  font-size: var(--font-base);
+}
+
+.importHint {
+  font-size: var(--font-sm);
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.importBtn {
+  min-height: var(--touch-target);
+  padding: 12px 20px;
+  font-size: var(--font-base);
+  font-weight: 700;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  background: #2b6cb0;
+  color: #fff;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.importBtn:active {
+  transform: scale(0.97);
+}
+
+.importBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.importResult {
+  background: var(--color-bg-light);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  margin-top: var(--space-sm);
+}
+
+.importResultLine {
+  font-size: var(--font-base);
+  margin-bottom: 4px;
+}
+
+.importErrors {
+  margin-top: var(--space-sm);
+  font-size: var(--font-sm);
+  color: var(--color-danger);
+}
+
+.importErrorLine {
+  padding: 2px 0;
+  word-break: break-all;
+}
+
+.tabImportActive {
+  background: #2b6cb0;
+}
+
 @media (max-width: 480px) {
   .staffCard {
     gap: 6px;

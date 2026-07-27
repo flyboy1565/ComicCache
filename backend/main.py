@@ -1,10 +1,13 @@
 import os
+import csv
+import io
 import json
 import secrets
 import asyncio
+import xml.etree.ElementTree as ET
 from datetime import datetime
 from typing import Optional
-from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, SQLModel, select
 from dotenv import load_dotenv
@@ -26,6 +29,7 @@ from utils import (
     fetch_cover_from_fandom_wiki,
     discover_missing_comic_assets,
     search_external_series,
+    fetch_comicvine_volume_issues,
 )
 
 load_dotenv()
@@ -859,6 +863,291 @@ async def handle_batch_scan(payload: BatchScanPayload, session: Session = Depend
 
     session.commit()
     return {"status": "success", "items_added": len(processed_comics)}    
+
+
+# -----------------------------------------------------------------
+# CSV IMPORT
+# -----------------------------------------------------------------
+@app.post("/api/v1/import/csv")
+async def import_csv(
+    file: UploadFile = File(...),
+    box_id: Optional[int] = Form(None),
+    create_box: Optional[str] = Form(None),
+    session: Session = Depends(get_session),
+):
+    if not file.filename or not file.filename.endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Please upload a .csv file")
+
+    content = await file.read()
+    text = content.decode("utf-8-sig")
+    reader = csv.DictReader(io.StringIO(text))
+
+    if not reader.fieldnames:
+        raise HTTPException(status_code=400, detail="CSV file appears empty or invalid")
+
+    required = {"title", "issue_number"}
+    missing = required - set(reader.fieldnames)
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Missing required columns: {', '.join(missing)}. Need at least: title, issue_number")
+
+    target_box = None
+    if box_id:
+        target_box = session.get(Box, box_id)
+        if not target_box:
+            raise HTTPException(status_code=404, detail=f"Box {box_id} not found")
+    elif create_box:
+        target_box = Box(name=create_box, location="Imported")
+        session.add(target_box)
+        session.flush()
+    else:
+        raise HTTPException(status_code=400, detail="Provide box_id or create_box name")
+
+    imported = 0
+    skipped = 0
+    errors = []
+
+    for i, row in enumerate(reader, start=1):
+        try:
+            title = row.get("title", "").strip()
+            issue_number = row.get("issue_number", "").strip()
+            publisher = row.get("publisher", "").strip() or "Unknown Publisher"
+            barcode = row.get("barcode", "").strip() or f"csv-{target_box.id}-{i}-{title[:10]}-{issue_number}"
+            writer = row.get("writer", "").strip() or None
+            penciler = row.get("penciler", "").strip() or None
+            keywords = row.get("keywords", "").strip() or None
+            estimated_value = float(row.get("estimated_value", 0)) if row.get("estimated_value", "").strip() else 0.0
+            purchase_cost = float(row.get("purchase_cost", 0)) if row.get("purchase_cost", "").strip() else 0.0
+
+            existing = session.exec(
+                select(Comic).where(Comic.barcode == barcode, Comic.box_id == target_box.id)
+            ).first()
+            if existing:
+                skipped += 1
+                continue
+
+            comic = Comic(
+                barcode=barcode,
+                title=title,
+                issue_number=issue_number,
+                publisher=publisher,
+                writer=writer,
+                penciler=penciler,
+                keywords=keywords,
+                estimated_value=estimated_value,
+                purchase_cost=purchase_cost,
+                box_id=target_box.id,
+            )
+            session.add(comic)
+            imported += 1
+        except Exception as e:
+            errors.append(f"Row {i}: {e}")
+
+    session.commit()
+    return {
+        "imported": imported,
+        "skipped": skipped,
+        "errors": errors,
+        "box_id": target_box.id,
+        "box_name": target_box.name,
+    }
+
+
+# -----------------------------------------------------------------
+# COMICRACK DB IMPORT
+# -----------------------------------------------------------------
+@app.post("/api/v1/import/comicrack")
+async def import_comicrack(
+    file: UploadFile = File(...),
+    box_id: Optional[int] = Form(None),
+    create_box: Optional[str] = Form(None),
+    session: Session = Depends(get_session),
+):
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Please upload a file")
+
+    content = await file.read()
+    text = content.decode("utf-8-sig")
+
+    target_box = None
+    if box_id:
+        target_box = session.get(Box, box_id)
+        if not target_box:
+            raise HTTPException(status_code=404, detail=f"Box {box_id} not found")
+    elif create_box:
+        target_box = Box(name=create_box, location="ComicRack Import")
+        session.add(target_box)
+        session.flush()
+    else:
+        raise HTTPException(status_code=400, detail="Provide box_id or create_box name")
+
+    imported = 0
+    skipped = 0
+    errors = []
+
+    try:
+        root = ET.fromstring(text)
+        books = root.findall(".//Book")
+        if not books:
+            books = root.findall("Book")
+    except ET.ParseError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid XML: {e}")
+
+    for i, book in enumerate(books, start=1):
+        try:
+            title = (book.findtext("Series") or "").strip()
+            issue_number = (book.findtext("Number") or "1").strip()
+            publisher = (book.findtext("Publisher") or "Unknown Publisher").strip()
+            writer = (book.findtext("Writer") or "").strip() or None
+            penciller = (book.findtext("Penciller") or "").strip() or None
+            summary = (book.findtext("Summary") or "").strip() or None
+            characters = (book.findtext("Characters") or "").strip() or None
+            notes = (book.findtext("Notes") or "").strip() or None
+            file_path = book.get("File", "")
+            year = (book.findtext("Year") or "").strip()
+
+            keywords = ", ".join(filter(None, [summary, characters, notes])) or None
+
+            barcode = f"cr-{target_box.id}-{i}-{title[:15]}-{issue_number}"
+
+            existing = session.exec(
+                select(Comic).where(
+                    Comic.title == title,
+                    Comic.issue_number == issue_number,
+                    Comic.publisher == publisher,
+                    Comic.box_id == target_box.id,
+                )
+            ).first()
+            if existing:
+                skipped += 1
+                continue
+
+            market_value = await fetch_live_market_value(title, issue_number)
+
+            comic = Comic(
+                barcode=barcode,
+                title=title,
+                issue_number=issue_number,
+                publisher=publisher,
+                writer=writer,
+                penciler=penciller,
+                keywords=keywords,
+                estimated_value=market_value,
+                box_id=target_box.id,
+            )
+            session.add(comic)
+            imported += 1
+        except Exception as e:
+            errors.append(f"Book {i} ({book.get('File', '?')}): {e}")
+
+    session.commit()
+    return {
+        "imported": imported,
+        "skipped": skipped,
+        "errors": errors,
+        "box_id": target_box.id,
+        "box_name": target_box.name,
+    }
+
+
+# -----------------------------------------------------------------
+# COMICVINE BROWSER API
+# -----------------------------------------------------------------
+@app.get("/api/v1/comicvine/series")
+def comicvine_search_series(query: str, publisher: Optional[str] = None, limit: int = 15):
+    api_key = os.getenv("COMIC_VINE_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=400, detail="COMIC_VINE_API_KEY not configured")
+
+    results = search_external_series(query, limit=limit)
+    if publisher:
+        results = [r for r in results if publisher.lower() in r.get("publisher", "").lower()]
+    return {"results": results}
+
+
+@app.get("/api/v1/comicvine/series/{volume_id}/issues")
+def comicvine_volume_issues(volume_id: int, limit: int = 100):
+    api_key = os.getenv("COMIC_VINE_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=400, detail="COMIC_VINE_API_KEY not configured")
+
+    issues = fetch_comicvine_volume_issues(volume_id, limit=limit)
+    return {"issues": issues}
+
+
+@app.post("/api/v1/comicvine/import")
+async def comicvine_bulk_import(payload: dict, session: Session = Depends(get_session)):
+    box_id = payload.get("box_id")
+    issues = payload.get("issues", [])
+    create_box = payload.get("create_box")
+
+    if not issues:
+        raise HTTPException(status_code=400, detail="No issues provided")
+
+    target_box = None
+    if box_id:
+        target_box = session.get(Box, box_id)
+        if not target_box:
+            raise HTTPException(status_code=404, detail=f"Box {box_id} not found")
+    elif create_box:
+        target_box = Box(name=create_box, location="ComicVine Import")
+        session.add(target_box)
+        session.flush()
+    else:
+        raise HTTPException(status_code=400, detail="Provide box_id or create_box name")
+
+    imported = 0
+    skipped = 0
+    errors = []
+
+    for i, issue in enumerate(issues):
+        try:
+            title = issue.get("title", "").strip()
+            issue_number = str(issue.get("issue_number", "1")).strip()
+            publisher = issue.get("publisher", "Unknown Publisher").strip()
+            cover_image = issue.get("cover_image") or None
+            writer = issue.get("writer") or None
+            penciler = issue.get("penciler") or None
+
+            barcode = f"cv-{target_box.id}-{i}-{title[:15]}-{issue_number}"
+
+            existing = session.exec(
+                select(Comic).where(
+                    Comic.title == title,
+                    Comic.issue_number == issue_number,
+                    Comic.publisher == publisher,
+                    Comic.box_id == target_box.id,
+                )
+            ).first()
+            if existing:
+                skipped += 1
+                continue
+
+            market_value = await fetch_live_market_value(title, issue_number)
+
+            comic = Comic(
+                barcode=barcode,
+                title=title,
+                issue_number=issue_number,
+                publisher=publisher,
+                cover_image=cover_image,
+                writer=writer,
+                penciler=penciler,
+                estimated_value=market_value,
+                box_id=target_box.id,
+            )
+            session.add(comic)
+            imported += 1
+        except Exception as e:
+            errors.append(f"Issue {i + 1} ({issue.get('issue_number', '?')}): {e}")
+
+    session.commit()
+    return {
+        "imported": imported,
+        "skipped": skipped,
+        "errors": errors,
+        "box_id": target_box.id,
+        "box_name": target_box.name,
+    }
 
 
 @app.get("/api/v1/series/overview")

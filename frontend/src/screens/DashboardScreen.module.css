@@ -207,6 +207,31 @@
   background: var(--color-border);
 }
 
+.browseRow {
+  margin-top: var(--space-sm);
+  display: flex;
+  justify-content: center;
+}
+
+.browseBtn {
+  min-height: var(--touch-target);
+  padding: 10px 20px;
+  font-size: var(--font-base);
+  font-weight: 700;
+  border: 2px dashed var(--color-primary);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-primary);
+  cursor: pointer;
+  width: 100%;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s;
+}
+
+.browseBtn:active {
+  background: var(--color-bg-light);
+}
+
 /* ── Search Results ── */
 .searchResults {
   margin-bottom: 30px;

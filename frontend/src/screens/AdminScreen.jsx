@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { fetchUsers, fetchRoles, fetchAdminStats, resetPassword, updateUserRole, deleteRole } from '../utilities/api';
+import React, { useState, useEffect, useRef } from 'react';
+import { fetchUsers, fetchRoles, fetchAdminStats, fetchBoxes, resetPassword, updateUserRole, deleteRole, importCsv, importComicRack } from '../utilities/api';
 import Skeleton from '../components/Skeleton';
 import styles from './AdminScreen.module.css';
 
@@ -26,6 +26,14 @@ export default function AdminScreen({ user, onBack }) {
   const [permEditor, setPermEditor] = useState(null);
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [importSubTab, setImportSubTab] = useState('csv');
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+  const [boxes, setBoxes] = useState([]);
+  const [importBoxId, setImportBoxId] = useState('');
+  const [importCreateBox, setImportCreateBox] = useState('');
+  const csvRef = useRef(null);
+  const crRef = useRef(null);
 
   const loadStats = () => {
     setStatsLoading(true);
@@ -53,6 +61,12 @@ export default function AdminScreen({ user, onBack }) {
     loadStaff();
     loadRoles();
   }, []);
+
+  useEffect(() => {
+    if (tab === 'import') {
+      fetchBoxes().then(setBoxes).catch(() => {});
+    }
+  }, [tab]);
 
   const handleReset = async (userId) => {
     setResetting(userId);
@@ -85,6 +99,40 @@ export default function AdminScreen({ user, onBack }) {
       loadRoles();
     } catch (err) {
       setMessage({ type: 'error', text: err.message });
+    }
+  };
+
+  const handleCsvImport = async () => {
+    const file = csvRef.current?.files?.[0];
+    if (!file) { setMessage({ type: 'error', text: 'Select a CSV file first' }); return; }
+    setImporting(true);
+    setImportResult(null);
+    setMessage(null);
+    try {
+      const result = await importCsv(file, importBoxId || null, importCreateBox || null);
+      setImportResult(result);
+      setMessage({ type: 'success', text: `CSV import done: ${result.imported} added, ${result.skipped} skipped` });
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message });
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleComicRackImport = async () => {
+    const file = crRef.current?.files?.[0];
+    if (!file) { setMessage({ type: 'error', text: 'Select a ComicDB.xml file first' }); return; }
+    setImporting(true);
+    setImportResult(null);
+    setMessage(null);
+    try {
+      const result = await importComicRack(file, importBoxId || null, importCreateBox || null);
+      setImportResult(result);
+      setMessage({ type: 'success', text: `ComicRack import done: ${result.imported} added, ${result.skipped} skipped` });
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message });
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -122,6 +170,10 @@ export default function AdminScreen({ user, onBack }) {
         <button onClick={() => { setTab('stats'); if (!stats) loadStats(); }}
           className={`${styles.tabBtn} ${tab === 'stats' ? `${styles.tabActive} ${styles.tabStatsActive}` : styles.tabInactive}`}>
           Stats
+        </button>
+        <button onClick={() => { setTab('import'); setMessage(null); }}
+          className={`${styles.tabBtn} ${tab === 'import' ? `${styles.tabActive} ${styles.tabImportActive}` : styles.tabInactive}`}>
+          Import
         </button>
       </div>
 
@@ -389,6 +441,82 @@ export default function AdminScreen({ user, onBack }) {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {tab === 'import' && (
+        <div>
+          <div className={styles.importSubTabs}>
+            <button
+              onClick={() => setImportSubTab('csv')}
+              className={`${styles.importSubTab} ${importSubTab === 'csv' ? styles.importSubTabActive : ''}`}
+            >
+              📄 CSV Import
+            </button>
+            <button
+              onClick={() => setImportSubTab('comicrack')}
+              className={`${styles.importSubTab} ${importSubTab === 'comicrack' ? styles.importSubTabActive : ''}`}
+            >
+              🗂 ComicRack Import
+            </button>
+          </div>
+
+          <div className={styles.importForm}>
+            <label className={styles.importLabel}>Target Box</label>
+            <select value={importBoxId} onChange={e => setImportBoxId(e.target.value)} className={styles.importSelect}>
+              <option value="">-- Select existing box --</option>
+              {boxes.map(b => <option key={b.id} value={b.id}>{b.name} ({b.location})</option>)}
+            </select>
+            <div className={styles.importOr}>— or —</div>
+            <input
+              type="text" placeholder="Create new box name"
+              value={importCreateBox}
+              onChange={e => setImportCreateBox(e.target.value)}
+              className={styles.importInput}
+            />
+
+            {importSubTab === 'csv' && (
+              <>
+                <label className={styles.importLabel}>Upload CSV File</label>
+                <input type="file" accept=".csv" ref={csvRef} className={styles.importFileInput} />
+                <div className={styles.importHint}>
+                  Columns: title*, issue_number*, publisher, barcode, writer, penciler, keywords, estimated_value, purchase_cost
+                </div>
+                <button onClick={handleCsvImport} disabled={importing} className={styles.importBtn}>
+                  {importing ? 'Importing...' : 'Import CSV'}
+                </button>
+              </>
+            )}
+
+            {importSubTab === 'comicrack' && (
+              <>
+                <label className={styles.importLabel}>Upload ComicDB.xml</label>
+                <input type="file" accept=".xml" ref={crRef} className={styles.importFileInput} />
+                <div className={styles.importHint}>
+                  Exported from ComicRack (usually at %APPDATA%/cYo/ComicRack/ComicDb.xml)
+                </div>
+                <button onClick={handleComicRackImport} disabled={importing} className={styles.importBtn}>
+                  {importing ? 'Importing...' : 'Import ComicRack DB'}
+                </button>
+              </>
+            )}
+
+            {importResult && (
+              <div className={styles.importResult}>
+                <div className={styles.importResultLine}>✅ Imported: <strong>{importResult.imported}</strong></div>
+                <div className={styles.importResultLine}>⏭ Skipped: <strong>{importResult.skipped}</strong></div>
+                <div className={styles.importResultLine}>📦 Box: <strong>{importResult.box_name}</strong></div>
+                {importResult.errors?.length > 0 && (
+                  <div className={styles.importErrors}>
+                    <div>⚠ Errors ({importResult.errors.length}):</div>
+                    {importResult.errors.slice(0, 10).map((e, i) => (
+                      <div key={i} className={styles.importErrorLine}>{e}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

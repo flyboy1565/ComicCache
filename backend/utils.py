@@ -481,3 +481,48 @@ def search_external_series(query: str, limit: int = 5) -> list:
     except Exception as e:
         log_scan_diagnostic("ComicVine Search", f"External series search failed: {e}", is_error=True)
     return []
+
+
+def fetch_comicvine_volume_issues(volume_id: int, limit: int = 100) -> list:
+    """Fetch full issue details for a ComicVine volume."""
+    api_key = os.getenv("COMIC_VINE_API_KEY")
+    if not api_key:
+        log_scan_diagnostic("ComicVine Issues", "COMIC_VINE_API_KEY not set", is_error=True)
+        return []
+
+    try:
+        url = "https://comicvine.gamespot.com/api/issues/"
+        params = {
+            "api_key": api_key,
+            "format": "json",
+            "filter": f"volume:{volume_id}",
+            "limit": limit,
+            "field_list": "id,issue_number,name,cover_date,image,description,volume",
+        }
+        headers = {"User-Agent": "ComicCacheVaultEngine/1.1.0"}
+        log_scan_diagnostic("ComicVine Issues", f"Fetching issues for volume {volume_id}")
+        response = requests.get(url, params=params, headers=headers, timeout=15)
+        if response.status_code != 200:
+            log_scan_diagnostic("ComicVine Issues", f"API error {response.status_code}", is_error=True)
+            return []
+
+        data = response.json()
+        if data.get("status_code") != 1:
+            return []
+
+        issues = []
+        for issue in data.get("results", []):
+            image_info = issue.get("image") or {}
+            issues.append({
+                "id": issue.get("id"),
+                "issue_number": issue.get("issue_number", "1"),
+                "name": issue.get("name") or "",
+                "cover_date": issue.get("cover_date") or "",
+                "cover_image": image_info.get("thumb_url") or image_info.get("medium_url"),
+                "description": issue.get("description") or "",
+            })
+        log_scan_diagnostic("ComicVine Issues", f"Fetched {len(issues)} issues")
+        return issues
+    except Exception as e:
+        log_scan_diagnostic("ComicVine Issues", f"Failed: {e}", is_error=True)
+    return []
