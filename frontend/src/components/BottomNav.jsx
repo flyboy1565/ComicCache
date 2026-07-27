@@ -1,7 +1,7 @@
 import React from 'react';
 import styles from './BottomNav.module.css';
 
-export default function BottomNav({ activeTab, onTabPress, user }) {
+export default function BottomNav({ activeTab, onTabPress, user, picklistCount }) {
   return (
     <nav className={styles.nav}>
       <button
@@ -22,7 +22,12 @@ export default function BottomNav({ activeTab, onTabPress, user }) {
         onClick={() => onTabPress('picklist')}
         className={`${styles.tab} ${activeTab === 'picklist' ? styles.active : ''}`}
       >
-        <span className={styles.icon}>📋</span>
+        <span className={styles.icon}>
+          📋
+          {picklistCount > 0 && (
+            <span className={styles.badge}>{picklistCount}</span>
+          )}
+        </span>
         <span className={styles.label}>Picklist</span>
       </button>
       <button

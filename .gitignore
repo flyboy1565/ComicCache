@@ -19,6 +19,8 @@
 **/yarn-debug.log
 **/yarn-error.log   
 
+**/.opencode-rules
+
 **/*.db 
 **/*.sqlite3
 **/*.bak

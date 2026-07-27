@@ -46,6 +46,8 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-family: var(--theme-font-heading);
+  letter-spacing: 0.02em;
 }
 
 .metaRow {

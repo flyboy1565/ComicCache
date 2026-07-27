@@ -1,0 +1,87 @@
+/* ── Default theme values ── */
+:root {
+  --theme-font-heading: inherit;
+  --theme-icon: '⚡';
+  --theme-card-border: none;
+  --theme-card-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+/* ── Batman ── */
+html.theme-batman {
+  --color-primary: #ecc94b;
+  --color-primary-dark: #d69e2e;
+  --color-blue: #4a5568;
+  --color-purple: #718096;
+  --color-bg: #1a202c;
+  --color-bg-light: #2d3748;
+  --color-bg-muted: #4a5568;
+  --color-text: #e2e8f0;
+  --color-text-secondary: #cbd5e0;
+  --color-text-muted: #a0aec0;
+  --color-text-light: #718096;
+  --color-text-on-dark: #a0aec0;
+  --color-border: #4a5568;
+  --color-border-strong: #718096;
+  --color-border-light: #2d3748;
+  --color-danger: #fc8181;
+  --theme-font-heading: 'Bangers', cursive;
+  --theme-icon: '🦇';
+  --theme-card-border: 2px solid #2d3748;
+  --theme-card-shadow: 0 0 0 1px rgba(236, 201, 75, 0.12);
+}
+
+/* ── Superman ── */
+html.theme-superman {
+  --color-primary: #2563eb;
+  --color-primary-dark: #1d4ed8;
+  --color-blue: #dc2626;
+  --color-purple: #f59e0b;
+  --color-danger: #dc2626;
+  --color-danger-bg: #fef2f2;
+  --color-bg: #eff6ff;
+  --color-bg-light: #dbeafe;
+  --color-bg-muted: #bfdbfe;
+  --color-green: #16a34a;
+  --color-green-light: #22c55e;
+  --color-success: #16a34a;
+  --theme-font-heading: 'Bangers', cursive;
+  --theme-icon: 'S';
+  --theme-card-border: 2px solid #93c5fd;
+  --theme-card-shadow: 0 0 0 1px rgba(37, 99, 235, 0.08);
+}
+
+/* ── Ms. Marvel ── */
+html.theme-msmarvel {
+  --color-primary: #805ad5;
+  --color-primary-dark: #6b46c1;
+  --color-blue: #319795;
+  --color-purple: #d53f8c;
+  --color-danger: #e53e3e;
+  --color-bg: #faf5ff;
+  --color-bg-light: #f0e6ff;
+  --color-bg-muted: #e6d4ff;
+  --color-green: #38a169;
+  --color-green-light: #48bb78;
+  --theme-font-heading: 'Bangers', cursive;
+  --theme-icon: '⚡';
+  --theme-card-border: 2px solid #e9d8fd;
+  --theme-card-shadow: none;
+}
+
+/* ── Star-Lord ── */
+html.theme-starlord {
+  --color-primary: #dd6b20;
+  --color-primary-dark: #c05621;
+  --color-blue: #38b2ac;
+  --color-purple: #e53e3e;
+  --color-danger: #dd6b20;
+  --color-bg: #fdf6f0;
+  --color-bg-light: #f7ede2;
+  --color-bg-muted: #efe1d4;
+  --color-green: #2c7a7b;
+  --color-green-light: #38b2ac;
+  --theme-font-heading: 'Bangers', cursive;
+  --theme-icon: '🎸';
+  --theme-card-border: 2px solid #fed7aa;
+  --theme-card-shadow: 0 0 12px rgba(221, 107, 32, 0.12);
+}

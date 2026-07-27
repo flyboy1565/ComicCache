@@ -24,7 +24,8 @@ from utils import (
     parse_five_digit_extension, 
     fetch_series_title_from_comic_db,
     fetch_cover_from_fandom_wiki,
-    discover_missing_comic_assets
+    discover_missing_comic_assets,
+    search_external_series,
 )
 
 load_dotenv()
@@ -369,7 +370,7 @@ def get_box_comics(box_id: int, session: Session = Depends(get_session)):
 @app.get("/api/v1/comics/search")
 def search_comics(query: str, session: Session = Depends(get_session)):
     if not query or len(query.strip()) < 2:
-        return []
+        return {"results": [], "external": []}
         
     search_term = f"%{query.strip()}%"
     statement = select(Comic).where(
@@ -397,7 +398,9 @@ def search_comics(query: str, session: Session = Depends(get_session)):
             "box_name": comic.box.name,
             "box_location": comic.box.location
         })
-    return transformed_results
+
+    external = search_external_series(query.strip())
+    return {"results": transformed_results, "external": external}
 
 
 @app.get("/api/v1/comics/{comic_id}")

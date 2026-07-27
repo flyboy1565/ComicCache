@@ -21,18 +21,61 @@ async def fetch_live_market_value(title: str, issue: str) -> float:
     return round(random.uniform(3.99, 50.00), 2)
 
 def fetch_official_series_run(title: str, publisher: str) -> list:
+    api_key = os.getenv("COMIC_VINE_API_KEY")
+    if not api_key:
+        log_scan_diagnostic("Series Run", "COMIC_VINE_API_KEY not set, cannot fetch series run", is_error=True)
+        return []
+
+    headers = {"User-Agent": "ComicCacheVaultEngine/1.1.0"}
     try:
-        url = f"https://beta.comics.org/api/v1/series/?name={requests.utils.quote(title)}&publisher__name={requests.utils.quote(publisher)}"
-        log_scan_diagnostic("GCD Checklist", f"Querying Grand Comics Database for series run data: {title} by {publisher}")
-        response = requests.get(url, timeout=5)
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("results"):
-                series_id = data["results"][0]["id"]
-                issues_res = requests.get(f"https://beta.comics.org/api/v1/series/{series_id}/issues/")
-                return [str(issue["number"]) for issue in issues_res.json().get("results", [])]
+        log_scan_diagnostic("Series Run", f"Looking up series: {title} by {publisher}")
+        search_url = "https://comicvine.gamespot.com/api/volumes/"
+        search_params = {
+            "api_key": api_key,
+            "format": "json",
+            "filter": f"name:{title}",
+            "limit": 5,
+        }
+        resp = requests.get(search_url, params=search_params, headers=headers, timeout=10)
+        if resp.status_code != 200:
+            log_scan_diagnostic("Series Run", f"Search failed: {resp.status_code}", is_error=True)
+            return []
+
+        data = resp.json()
+        if data.get("status_code") != 1:
+            return []
+
+        # Find first volume matching publisher
+        volume_url = None
+        for vol in data.get("results", []):
+            pub = vol.get("publisher") or {}
+            pub_name = pub.get("name", "") if isinstance(pub, dict) else ""
+            if pub_name.lower() == publisher.lower():
+                volume_url = vol.get("api_detail_url")
+                break
+
+        if not volume_url:
+            log_scan_diagnostic("Series Run", f"No volume found matching publisher '{publisher}'", is_error=True)
+            return []
+
+        # Fetch volume detail with issue list
+        issue_params = {
+            "api_key": api_key,
+            "format": "json",
+            "field_list": "issues",
+        }
+        detail_resp = requests.get(volume_url, params=issue_params, headers=headers, timeout=10)
+        if detail_resp.status_code != 200:
+            return []
+
+        detail_data = detail_resp.json()
+        issues = detail_data.get("results", {}).get("issues", [])
+        issue_numbers = [str(issue["issue_number"]) for issue in issues if issue.get("issue_number")]
+        log_scan_diagnostic("Series Run", f"Found {len(issue_numbers)} issues for {title}")
+        return issue_numbers
+
     except Exception as e:
-        log_scan_diagnostic("GCD Checklist", f"Checking open source wiki index failed or timed out: {e}", is_error=True)
+        log_scan_diagnostic("Series Run", f"ComicVine lookup failed: {e}", is_error=True)
     return []
 
 async def query_comicvine_metadata(barcode_str: str) -> dict or None:
@@ -394,3 +437,47 @@ async def fetch_series_title_from_comic_db(barcode_str: str) -> tuple:
                 
     log_scan_diagnostic("GCD Search Engine", f"❌ No registry variants matched barcode namespace: {upc_root}")
     return None, None
+
+
+def search_external_series(query: str, limit: int = 5) -> list:
+    """Search ComicVine for series matching a query string."""
+    api_key = os.getenv("COMIC_VINE_API_KEY")
+    if not api_key:
+        log_scan_diagnostic("ComicVine Search", "COMIC_VINE_API_KEY not set", is_error=True)
+        return []
+
+    try:
+        url = "https://comicvine.gamespot.com/api/volumes/"
+        params = {
+            "api_key": api_key,
+            "format": "json",
+            "filter": f"name:{query}",
+            "limit": limit,
+        }
+        headers = {"User-Agent": "ComicCacheVaultEngine/1.1.0"}
+        log_scan_diagnostic("ComicVine Search", f"Searching external series: {query}")
+        response = requests.get(url, params=params, headers=headers, timeout=10)
+        if response.status_code != 200:
+            log_scan_diagnostic("ComicVine Search", f"API error {response.status_code}", is_error=True)
+            return []
+
+        data = response.json()
+        if data.get("status_code") != 1:
+            log_scan_diagnostic("ComicVine Search", f"API response error: {data.get('error', 'unknown')}", is_error=True)
+            return []
+
+        results = []
+        for vol in data.get("results", [])[:limit]:
+            publisher = vol.get("publisher") or {}
+            publisher_name = publisher.get("name", "Unknown") if isinstance(publisher, dict) else "Unknown"
+            results.append({
+                "title": vol.get("name", query),
+                "publisher": publisher_name,
+                "issue_count": vol.get("count_of_issues", 0),
+                "start_year": vol.get("start_year"),
+                "url": vol.get("site_detail_url"),
+            })
+        return results
+    except Exception as e:
+        log_scan_diagnostic("ComicVine Search", f"External series search failed: {e}", is_error=True)
+    return []

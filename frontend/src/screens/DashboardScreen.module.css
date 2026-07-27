@@ -29,12 +29,35 @@
   margin: 0;
   color: var(--color-primary);
   font-size: var(--font-3xl);
+  font-family: var(--theme-font-heading);
+  letter-spacing: 0.02em;
 }
 
 .headerSubtitle {
   margin: 5px 0 0 0;
   font-size: var(--font-base);
   color: var(--color-text-muted);
+}
+
+.supermanS {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: #2563eb;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+  position: relative;
+}
+
+.supermanS::after {
+  content: 'S';
+  color: #dc2626;
+  font-family: 'Bangers', cursive;
+  font-size: 22px;
+  line-height: 1;
 }
 
 .headerRight {
@@ -137,6 +160,12 @@
   margin-bottom: 25px;
 }
 
+.searchWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
 .searchInput {
   width: 100%;
   padding: var(--space-md) var(--space-lg);
@@ -146,11 +175,36 @@
   box-sizing: border-box;
   -webkit-appearance: none;
   appearance: none;
+  padding-right: 44px;
 }
 
 .searchInput:focus {
   outline: none;
   border-color: var(--color-blue);
+}
+
+.searchClear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-bg-muted);
+  color: var(--color-text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  line-height: 1;
+}
+
+.searchClear:active {
+  background: var(--color-border);
 }
 
 /* ── Search Results ── */
@@ -219,6 +273,20 @@
 
 .seriesCardTitle {
   color: var(--color-text);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.externalLink {
+  text-decoration: none;
+  font-size: 14px;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.externalLink:hover {
+  opacity: 1;
 }
 
 .seriesCardPublisher {

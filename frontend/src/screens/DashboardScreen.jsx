@@ -4,14 +4,14 @@ import BoxDetailScreen from '../components/BoxDetailScreen';
 import PicklistDrawer from '../components/PicklistDrawer';
 import Toast from '../components/Toast';
 import SeriesVolumeViewer from '../components/SeriesVolumeViewer';
-import UserMenu from '../components/UserMenu';
+import UserPanel from '../components/UserPanel';
 import RegisterScreen from '../screens/RegisterScreen';
 import AdminScreen from '../screens/AdminScreen';
 import BottomNav from '../components/BottomNav';
 import { fetchBoxes, fetchValuation, createBox, searchComics, addToPicklist } from '../utilities/api';
 import styles from './DashboardScreen.module.css';
 
-export default function DashboardScreen({ user, onLogout }) {
+export default function DashboardScreen({ user, onLogout, theme, onThemeChange }) {
   const [boxes, setBoxes] = useState([]);
   const [selectedBoxId, setSelectedBoxId] = useState('');
   const [boxValuations, setBoxValuations] = useState({});
@@ -26,6 +26,7 @@ export default function DashboardScreen({ user, onLogout }) {
 
   const [toast, setToast] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [externalSeries, setExternalSeries] = useState([]);
   const pullStartY = useRef(0);
   const [pullDistance, setPullDistance] = useState(0);
 
@@ -72,6 +73,12 @@ export default function DashboardScreen({ user, onLogout }) {
 
   const [isPicklistOpen, setIsPicklistOpen] = useState(false);
   const [bottomNavTab, setBottomNavTab] = useState('home');
+  const [picklistCount, setPicklistCount] = useState(() => {
+    try {
+      const raw = localStorage.getItem('comiccache_picklist');
+      return raw ? JSON.parse(raw).length : 0;
+    } catch { return 0; }
+  });
 
   const handleBottomNavPress = (tab) => {
     setBottomNavTab(tab);
@@ -82,10 +89,15 @@ export default function DashboardScreen({ user, onLogout }) {
       case 'picklist':
         setIsPicklistOpen(true);
         break;
+      case 'user':
+        setIsUserPanelOpen(true);
+        break;
       default:
         break;
     }
   };
+
+  const [isUserPanelOpen, setIsUserPanelOpen] = useState(false);
 
   const handleCloseScanner = () => {
     setIsScannerOpen(false);
@@ -95,12 +107,28 @@ export default function DashboardScreen({ user, onLogout }) {
   const handleClosePicklist = () => {
     setIsPicklistOpen(false);
     setBottomNavTab('home');
+    try {
+      const raw = localStorage.getItem('comiccache_picklist');
+      setPicklistCount(raw ? JSON.parse(raw).length : 0);
+    } catch { setPicklistCount(0); }
+  };
+
+  const handleCloseUserPanel = () => {
+    setIsUserPanelOpen(false);
+    setBottomNavTab('home');
   };
 
   const handleAddToPicklist = async (item) => {
     try {
-      await addToPicklist(item);
+      const newItem = await addToPicklist(item);
       showToast('Added to picklist!');
+      setPicklistCount(c => c + 1);
+      try {
+        const raw = localStorage.getItem('comiccache_picklist');
+        const cached = raw ? JSON.parse(raw) : [];
+        cached.unshift(newItem);
+        localStorage.setItem('comiccache_picklist', JSON.stringify(cached));
+      } catch {}
     } catch (e) {
       console.error("Failed to add to picklist:", e);
       showToast('Failed to add to picklist', 'error');
@@ -141,11 +169,15 @@ export default function DashboardScreen({ user, onLogout }) {
   useEffect(() => {
     if (globalSearchQuery.trim().length < 2) {
       setSearchResults([]);
+      setExternalSeries([]);
       return;
     }
     const delayDebounce = setTimeout(() => {
       searchComics(globalSearchQuery)
-        .then(data => setSearchResults(data))
+        .then(data => {
+          setSearchResults(data.results || data);
+          setExternalSeries(data.external || []);
+        })
         .catch(err => console.error(err));
     }, 300);
     return () => clearTimeout(delayDebounce);
@@ -192,12 +224,17 @@ export default function DashboardScreen({ user, onLogout }) {
       
       <header className={styles.header}>
         <div>
-          <h1 className={styles.headerTitle}>⚡ ComicCache </h1>
+          <h1 className={styles.headerTitle} data-theme-icon={theme !== 'default' ? '' : ''}>
+            {theme === 'default' ? '⚡ ' : ''}
+            {theme === 'batman' ? '🦇 ' : ''}
+            {theme === 'superman' ? <span className={styles.supermanS} /> : ''}
+            {theme === 'msmarvel' ? '⚡ ' : ''}
+            {theme === 'starlord' ? '🎸 ' : ''}
+            ComicCache
+          </h1>
           <p className={styles.headerSubtitle}> Store Collection </p>
         </div>
-        <div className={styles.headerRight}>
-          {user && <UserMenu user={user} onLogout={onLogout} onAddStaff={handleAddStaff} onNavigate={handleManageStaff} />}
-        </div>
+        <div className={styles.headerRight}></div>
       </header>
 
       {currentView === 'register' ? (
@@ -219,20 +256,31 @@ export default function DashboardScreen({ user, onLogout }) {
       <>
 
       <section className={styles.searchSection}>
-        <input 
-          type="text"
-          placeholder="🔍 Quick search catalog by title, creator, tag, or barcode..."
-          value={globalSearchQuery}
-          onChange={e => setGlobalSearchQuery(e.target.value)}
-          className={styles.searchInput}
-        />
+        <div className={styles.searchWrap}>
+          <input 
+            type="text"
+            placeholder="🔍 Quick search catalog by title, creator, tag, or barcode..."
+            value={globalSearchQuery}
+            onChange={e => setGlobalSearchQuery(e.target.value)}
+            className={styles.searchInput}
+          />
+          {globalSearchQuery.length > 0 && (
+            <button
+              onClick={() => { setGlobalSearchQuery(''); setSearchResults([]); setExternalSeries([]); }}
+              className={styles.searchClear}
+              aria-label="Clear search"
+            >
+              ✕
+            </button>
+          )}
+        </div>
       </section>
 
       {globalSearchQuery.trim().length >= 2 && (
         <section className={styles.searchResults}>
           <div className={styles.searchResultsHeader}>
             <h3 className={styles.searchResultsTitle}>Query Results</h3>
-            <button onClick={() => { setGlobalSearchQuery(''); setSearchResults([]); }} className={styles.btnGhost}>Clear</button>
+            <button onClick={() => { setGlobalSearchQuery(''); setSearchResults([]); setExternalSeries([]); }} className={styles.btnGhost}>Clear</button>
           </div>
 
           <div className={styles.seriesSection}>
@@ -277,6 +325,38 @@ export default function DashboardScreen({ user, onLogout }) {
               {searchResults.length === 0 && <div className={styles.emptyState}>No specific matching variants located.</div>}
             </div>
           </div>
+
+          {externalSeries.length > 0 && (
+            <div className={styles.seriesSection}>
+              <h4 className={styles.seriesSectionTitle}>🌐 External Series Available</h4>
+              <div className={styles.seriesList}>
+                {externalSeries.map((s, i) => (
+                  <div 
+                    key={i} 
+                    onClick={() => setActiveSeriesFocus({ title: s.title, publisher: s.publisher })}
+                    className={styles.seriesCard}
+                  >
+                    <div>
+                      <strong className={styles.seriesCardTitle}>
+                        {s.title}
+                        {s.url && (
+                          <a href={s.url} target="_blank" rel="noopener noreferrer" className={styles.externalLink} onClick={e => e.stopPropagation()}>
+                            🌐
+                          </a>
+                        )}
+                      </strong>
+                      <div className={styles.seriesCardPublisher}>
+                        {s.publisher} · {s.issue_count} issues since {s.start_year || '—'}
+                      </div>
+                    </div>
+                    <span className={styles.seriesCardAction}>
+                      View Full Timeline ➔
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
         </section>
       )}
@@ -378,6 +458,18 @@ export default function DashboardScreen({ user, onLogout }) {
         <PicklistDrawer onClose={handleClosePicklist} showToast={showToast} />
       )}
 
+      {isUserPanelOpen && (
+        <UserPanel
+          user={user}
+          onClose={handleCloseUserPanel}
+          onLogout={onLogout}
+          onAddStaff={handleAddStaff}
+          onNavigate={handleManageStaff}
+          theme={theme}
+          onThemeChange={onThemeChange}
+        />
+      )}
+
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
@@ -394,6 +486,7 @@ export default function DashboardScreen({ user, onLogout }) {
         activeTab={bottomNavTab}
         onTabPress={handleBottomNavPress}
         user={user}
+        picklistCount={picklistCount}
       />
 
     </div>

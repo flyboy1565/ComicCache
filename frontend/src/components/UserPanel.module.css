@@ -1,0 +1,273 @@
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  z-index: 9998;
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 420px;
+  max-width: 90vw;
+  height: 100vh;
+  height: 100dvh;
+  background: var(--color-bg-dark);
+  box-shadow: -4px 0 25px rgba(0, 0, 0, 0.3);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  font-family: system-ui, sans-serif;
+  color: #fff;
+  animation: slideIn 0.2s ease-out;
+}
+
+.drawerHeader {
+  padding: var(--space-xl);
+  padding-top: calc(var(--space-xl) + var(--safe-top));
+  border-bottom: 1px solid #2d3748;
+  background: #232d3f;
+}
+
+.headerTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.headerLabel {
+  font-size: var(--font-xs);
+  color: var(--color-text-light);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.drawerTitle {
+  margin: 4px 0 0 0;
+  font-size: var(--font-2xl);
+  color: #fff;
+  font-weight: 700;
+  font-family: var(--theme-font-heading);
+  letter-spacing: 0.02em;
+}
+
+.closeBtn {
+  min-height: var(--touch-target);
+  min-width: var(--touch-target);
+  padding: 8px 12px;
+  font-size: var(--font-xl);
+  background: #2d3748;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--color-text-light);
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.closeBtn:active {
+  background: #4a5568;
+}
+
+.contentArea {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--space-xl);
+  padding-bottom: calc(var(--space-xl) + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  background: var(--color-bg-dark);
+}
+
+.userSection {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding-bottom: var(--space-lg);
+  border-bottom: 1px solid #2d3748;
+}
+
+.userAvatarLarge {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-xl);
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.userInfo {
+  min-width: 0;
+  flex: 1;
+}
+
+.userName {
+  font-size: var(--font-base);
+  font-weight: 600;
+  color: #fff;
+}
+
+.userEmail {
+  font-size: var(--font-sm);
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+.userRoleBadge {
+  font-size: var(--font-xs);
+  font-weight: 600;
+  padding: 2px var(--space-sm);
+  border-radius: 999px;
+  background: rgba(0,0,0,0.3);
+  flex-shrink: 0;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding-bottom: var(--space-lg);
+  border-bottom: 1px solid #2d3748;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sectionLabel {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--color-text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.addBtn {
+  min-height: var(--touch-target);
+  min-width: var(--touch-target);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: var(--font-base);
+  color: var(--color-primary);
+  font-weight: bold;
+  border-radius: var(--radius-sm);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.addBtn:active {
+  background: rgba(0,0,0,0.2);
+}
+
+.emptyText {
+  font-size: var(--font-sm);
+  color: var(--color-text-light);
+  font-style: italic;
+  padding: 4px 0;
+}
+
+.employeeRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 6px 0;
+}
+
+.employeeAvatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-xs);
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.employeeName {
+  font-size: var(--font-md);
+  color: var(--color-text-on-dark);
+}
+
+.employeeRoleLabel {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  margin-left: auto;
+}
+
+.themeSelect {
+  font-size: var(--font-md);
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid #4a5568;
+  background: #2d3748;
+  color: #fff;
+  min-height: 44px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  width: 100%;
+}
+
+.adminBtn {
+  width: 100%;
+  min-height: var(--touch-target);
+  padding: 12px;
+  background: #2d3748;
+  border: 1px solid #4a5568;
+  border-radius: var(--radius-md);
+  color: var(--color-primary);
+  font-size: var(--font-base);
+  font-weight: bold;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.adminBtn:active {
+  background: #4a5568;
+}
+
+.signOutBtn {
+  width: 100%;
+  min-height: var(--touch-target);
+  padding: 12px;
+  background: rgba(229, 62, 62, 0.15);
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-primary);
+  font-size: var(--font-base);
+  font-weight: bold;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.signOutBtn:active {
+  background: rgba(229, 62, 62, 0.25);
+}

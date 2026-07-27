@@ -4,11 +4,33 @@ import SetPasswordScreen from './screens/SetPasswordScreen';
 import DashboardScreen from './screens/DashboardScreen';
 import Skeleton from './components/Skeleton';
 import { getToken, fetchMe, clearToken } from './utilities/api';
+import './themes.css';
+
+function getStoredTheme() {
+  try {
+    return localStorage.getItem('comiccache-theme') || 'default';
+  } catch {
+    return 'default';
+  }
+}
+
+function applyTheme(theme) {
+  const html = document.documentElement;
+  html.className = html.className.replace(/theme-\w+/g, '').trim();
+  if (theme !== 'default') {
+    html.classList.add(`theme-${theme}`);
+  }
+}
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [passwordChangeRequired, setPasswordChangeRequired] = useState(false);
+  const [theme, setTheme] = useState(getStoredTheme);
+
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
 
   useEffect(() => {
     const token = getToken();
@@ -42,6 +64,13 @@ export default function App() {
     setPasswordChangeRequired(false);
   };
 
+  const handleThemeChange = (newTheme) => {
+    setTheme(newTheme);
+    try {
+      localStorage.setItem('comiccache-theme', newTheme);
+    } catch {}
+  };
+
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100dvh' }}>
@@ -58,5 +87,5 @@ export default function App() {
     return <SetPasswordScreen user={user} onComplete={handlePasswordChangeComplete} />;
   }
 
-  return <DashboardScreen user={user} onLogout={handleLogout} />;
+  return <DashboardScreen user={user} onLogout={handleLogout} theme={theme} onThemeChange={handleThemeChange} />;
 }

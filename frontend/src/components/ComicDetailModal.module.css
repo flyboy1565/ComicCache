@@ -31,6 +31,8 @@
   max-height: 90vh;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  border: var(--theme-card-border);
+  box-shadow: var(--theme-card-shadow, 0 20px 60px rgba(0,0,0,0.3));
 }
 
 .closeBtn {
@@ -119,6 +121,8 @@
   color: var(--color-text);
   font-size: 18px;
   text-align: center;
+  font-family: var(--theme-font-heading);
+  letter-spacing: 0.02em;
 }
 
 .comicPublisher {
@@ -195,4 +199,23 @@
 .seriesBtn {
   background: var(--color-blue);
   color: #fff;
+}
+
+.bottomCloseBtn {
+  display: block;
+  width: 100%;
+  min-height: var(--touch-target);
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--font-base);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bottomCloseBtn:active {
+  background: var(--color-bg-muted);
 }

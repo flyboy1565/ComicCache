@@ -45,3 +45,11 @@
 | `backend/main.py:729-770` | Added `highest_value` query + `estimated_value` to `oldest_comics` + new `highest_value` response section |
 | `frontend/src/screens/AdminScreen.jsx` | Added "Inventory" tab button + `tab === 'inventory'` section with 3 reusable stat cards |
 
+## Phase E — ComicRack DB Import (Planned)
+
+### TODO
+- [ ] Research ComicDB.xml schema (XML-based, stored at `%APPDATA%/cYo/ComicRack/ComicDb.xml`) and map fields to ComicCache models (Series→title, Number→issue_number, Publisher→publisher, etc.)
+- [ ] Build import route: `POST /api/v1/import/comicrack` — accepts `ComicDB.xml` upload, parses `<Book>` entries, inserts into ComicCache DB
+- [ ] Build frontend import UI in Admin screen (file upload + status feedback)
+- [ ] Consider ComicInfo.xml (per-file metadata inside CBZ/CBR) as a secondary import source via the Anansi schema
+

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { fetchUsers } from '../utilities/api';
-import styles from './UserMenu.module.css';
+import styles from './UserPanel.module.css';
 
 const ROLE_COLORS = {
   'Editor-in-Chief': '#e53e3e',
@@ -15,62 +15,58 @@ function roleColor(displayName) {
 }
 
 const THEMES = [
-  { id: 'default',  label: 'Default',   color: '#e53e3e' },
-  { id: 'batman',   label: 'Batman',    color: '#ecc94b' },
-  { id: 'superman', label: 'Superman',  color: '#3182ce' },
-  { id: 'msmarvel', label: 'Ms. Marvel', color: '#805ad5' },
-  { id: 'starlord', label: 'Star-Lord',  color: '#dd6b20' },
+  { id: 'default',  label: 'Default' },
+  { id: 'batman',   label: 'Batman' },
+  { id: 'superman', label: 'Superman' },
+  { id: 'msmarvel', label: 'Ms. Marvel' },
+  { id: 'starlord', label: 'Star-Lord' },
 ];
 
-export default function UserMenu({ user, onLogout, onAddStaff, onNavigate, theme, onThemeChange }) {
-  const [open, setOpen] = useState(false);
+export default function UserPanel({ user, onClose, onLogout, onAddStaff, onNavigate, theme, onThemeChange }) {
   const [employees, setEmployees] = useState([]);
-  const menuRef = useRef(null);
+  const swipeStartX = useRef(0);
 
   const canManageUsers = user.role === 'admin' || user.role === 'owner';
 
   useEffect(() => {
-    if (open && canManageUsers) {
+    if (canManageUsers) {
       fetchUsers()
         .then(setEmployees)
         .catch(() => setEmployees([]));
     }
-    if (!open) setEmployees([]);
-  }, [open, canManageUsers]);
+  }, [canManageUsers]);
 
-  useEffect(() => {
-    const handleClick = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setOpen(false);
-      }
-    };
-    if (open) document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [open]);
+  const handleTouchStart = (e) => {
+    swipeStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e) => {
+    const dx = e.changedTouches[0].clientX - swipeStartX.current;
+    if (dx > 80) onClose();
+  };
 
   const initial = (user.username || '?')[0].toUpperCase();
   const badgeColor = roleColor(user.role_display);
 
   return (
-    <div ref={menuRef} className={styles.wrapper}>
-      <div className={styles.triggerRow}>
-        <button onClick={() => setOpen(!open)} className={styles.trigger}>
-          <div className={styles.avatar} style={{ background: badgeColor }}>
-            {initial}
+    <>
+      <div onClick={onClose} className={styles.overlay} />
+      <div
+        className={styles.drawer}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div className={styles.drawerHeader}>
+          <div className={styles.headerTop}>
+            <div>
+              <span className={styles.headerLabel}>ACCOUNT</span>
+              <h2 className={styles.drawerTitle}>User Profile</h2>
+            </div>
+            <button onClick={onClose} className={styles.closeBtn}>✕</button>
           </div>
-          <span className={styles.username}>{user.username}</span>
-          <span className={styles.arrow}>{open ? '▲' : '▼'}</span>
-        </button>
+        </div>
 
-        {canManageUsers && (
-          <button onClick={() => { setOpen(false); onNavigate(); }} className={styles.gearBtn} title="Admin Panel">
-            ⚙️
-          </button>
-        )}
-      </div>
-
-      {open && (
-        <div className={styles.dropdown}>
+        <div className={styles.contentArea}>
           <div className={styles.userSection}>
             <div className={styles.userAvatarLarge} style={{ background: badgeColor }}>
               {initial}
@@ -85,16 +81,13 @@ export default function UserMenu({ user, onLogout, onAddStaff, onNavigate, theme
           </div>
 
           {canManageUsers && (
-            <div className={styles.employeeSection}>
-              <div className={styles.employeeHeader}>
-                <span className={styles.employeeLabel}>Employees</span>
-                <button onClick={() => { setOpen(false); onAddStaff(); }}
-                  className={styles.addBtn} title="Add Staff">
-                  + Add
-                </button>
+            <div className={styles.section}>
+              <div className={styles.sectionHeader}>
+                <span className={styles.sectionLabel}>Employees</span>
+                <button onClick={() => { onClose(); onAddStaff(); }} className={styles.addBtn}>+ Add</button>
               </div>
               {employees.length === 0 ? (
-                <div className={styles.noEmployees}>No accounts yet</div>
+                <div className={styles.emptyText}>No accounts yet</div>
               ) : (
                 employees.filter(e => e.id !== user.id).map((emp) => (
                   <div key={emp.id} className={styles.employeeRow}>
@@ -109,11 +102,11 @@ export default function UserMenu({ user, onLogout, onAddStaff, onNavigate, theme
             </div>
           )}
 
-          <div className={styles.themeSection}>
-            <span className={styles.themeLabel}>Theme</span>
+          <div className={styles.section}>
+            <span className={styles.sectionLabel}>Theme</span>
             <select
               value={theme}
-              onChange={(e) => { onThemeChange(e.target.value); }}
+              onChange={(e) => onThemeChange(e.target.value)}
               className={styles.themeSelect}
             >
               {THEMES.map((t) => (
@@ -122,11 +115,17 @@ export default function UserMenu({ user, onLogout, onAddStaff, onNavigate, theme
             </select>
           </div>
 
-          <button onClick={onLogout} className={`${styles.menuBtn} ${styles.signOutBtn}`}>
+          {canManageUsers && (
+            <button onClick={() => { onClose(); onNavigate(); }} className={styles.adminBtn}>
+              ⚙️ Admin Panel
+            </button>
+          )}
+
+          <button onClick={onLogout} className={styles.signOutBtn}>
             Sign Out
           </button>
         </div>
-      )}
-    </div>
+      </div>
+    </>
   );
 }

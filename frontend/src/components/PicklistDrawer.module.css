@@ -57,6 +57,8 @@
   font-size: var(--font-2xl);
   color: #fff;
   font-weight: 700;
+  font-family: var(--theme-font-heading);
+  letter-spacing: 0.02em;
 }
 
 .closeBtn {

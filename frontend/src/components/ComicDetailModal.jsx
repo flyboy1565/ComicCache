@@ -95,6 +95,10 @@ const ComicDetailModal = memo(function ComicDetailModal({ comic, onClose, onView
         >
           📚 View Full Series Run
         </button>
+
+        <button onClick={handleClose} className={styles.bottomCloseBtn}>
+          Close
+        </button>
       </div>
     </>
   );

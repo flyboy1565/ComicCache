@@ -213,7 +213,7 @@ export default function SeriesVolumeViewer({ title, publisher, onClose }) {
                     ) : item.cover_status === 'pending' ? (
                       <span className={styles.coverPlaceholder}>⏳</span>
                     ) : (
-                      <ComicBubbleIcon size={18} color={hasBook ? '#48bb78' : '#fc8181'} />
+                      <ComicBubbleIcon size={14} color={hasBook ? '#48bb78' : '#fc8181'} />
                     )}
                   </div>
 
@@ -228,14 +228,11 @@ export default function SeriesVolumeViewer({ title, publisher, onClose }) {
                     </div>
                     
                     <div className={styles.boxLocation}>
-                      {hasBook ? `📦 ${item.box_name}` : 'Not registered in vault inventory'}
+                      {hasBook ? item.box_name : 'Not in vault'}
                     </div>
                   </div>
 
                   <div className={styles.financialCol}>
-                    <div className={styles.qtyLabel}>
-                      QTY: {hasBook ? '1' : '0'}
-                    </div>
                     <div className={`${styles.issueValue} ${hasBook ? styles.issueValueHave : styles.issueValueMissing}`}>
                       ${hasBook ? item.estimated_value.toFixed(2) : '0.00'}
                     </div>
