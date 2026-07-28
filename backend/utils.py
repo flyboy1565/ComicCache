@@ -471,6 +471,7 @@ def search_external_series(query: str, limit: int = 5) -> list:
             publisher = vol.get("publisher") or {}
             publisher_name = publisher.get("name", "Unknown") if isinstance(publisher, dict) else "Unknown"
             results.append({
+                "id": vol.get("id"),
                 "title": vol.get("name", query),
                 "publisher": publisher_name,
                 "issue_count": vol.get("count_of_issues", 0),

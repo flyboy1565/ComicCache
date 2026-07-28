@@ -270,22 +270,6 @@ export async function importCsv(file, boxId, createBox) {
   return res.json();
 }
 
-export async function importComicRack(file, boxId, createBox) {
-  const formData = new FormData();
-  formData.append('file', file);
-  if (boxId) formData.append('box_id', boxId);
-  if (createBox) formData.append('create_box', createBox);
-  const res = await authFetch(`${API_BASE_URL}/import/comicrack`, {
-    method: 'POST',
-    body: formData,
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || "ComicRack import failed");
-  }
-  return res.json();
-}
-
 export async function searchComicVineSeries(query, publisher, limit = 15) {
   const params = new URLSearchParams({ query, limit });
   if (publisher) params.append('publisher', publisher);

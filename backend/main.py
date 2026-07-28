@@ -4,7 +4,6 @@ import io
 import json
 import secrets
 import asyncio
-import xml.etree.ElementTree as ET
 from datetime import datetime
 from typing import Optional
 from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks, UploadFile, File, Form
@@ -941,103 +940,6 @@ async def import_csv(
             imported += 1
         except Exception as e:
             errors.append(f"Row {i}: {e}")
-
-    session.commit()
-    return {
-        "imported": imported,
-        "skipped": skipped,
-        "errors": errors,
-        "box_id": target_box.id,
-        "box_name": target_box.name,
-    }
-
-
-# -----------------------------------------------------------------
-# COMICRACK DB IMPORT
-# -----------------------------------------------------------------
-@app.post("/api/v1/import/comicrack")
-async def import_comicrack(
-    file: UploadFile = File(...),
-    box_id: Optional[int] = Form(None),
-    create_box: Optional[str] = Form(None),
-    session: Session = Depends(get_session),
-):
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="Please upload a file")
-
-    content = await file.read()
-    text = content.decode("utf-8-sig")
-
-    target_box = None
-    if box_id:
-        target_box = session.get(Box, box_id)
-        if not target_box:
-            raise HTTPException(status_code=404, detail=f"Box {box_id} not found")
-    elif create_box:
-        target_box = Box(name=create_box, location="ComicRack Import")
-        session.add(target_box)
-        session.flush()
-    else:
-        raise HTTPException(status_code=400, detail="Provide box_id or create_box name")
-
-    imported = 0
-    skipped = 0
-    errors = []
-
-    try:
-        root = ET.fromstring(text)
-        books = root.findall(".//Book")
-        if not books:
-            books = root.findall("Book")
-    except ET.ParseError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid XML: {e}")
-
-    for i, book in enumerate(books, start=1):
-        try:
-            title = (book.findtext("Series") or "").strip()
-            issue_number = (book.findtext("Number") or "1").strip()
-            publisher = (book.findtext("Publisher") or "Unknown Publisher").strip()
-            writer = (book.findtext("Writer") or "").strip() or None
-            penciller = (book.findtext("Penciller") or "").strip() or None
-            summary = (book.findtext("Summary") or "").strip() or None
-            characters = (book.findtext("Characters") or "").strip() or None
-            notes = (book.findtext("Notes") or "").strip() or None
-            file_path = book.get("File", "")
-            year = (book.findtext("Year") or "").strip()
-
-            keywords = ", ".join(filter(None, [summary, characters, notes])) or None
-
-            barcode = f"cr-{target_box.id}-{i}-{title[:15]}-{issue_number}"
-
-            existing = session.exec(
-                select(Comic).where(
-                    Comic.title == title,
-                    Comic.issue_number == issue_number,
-                    Comic.publisher == publisher,
-                    Comic.box_id == target_box.id,
-                )
-            ).first()
-            if existing:
-                skipped += 1
-                continue
-
-            market_value = await fetch_live_market_value(title, issue_number)
-
-            comic = Comic(
-                barcode=barcode,
-                title=title,
-                issue_number=issue_number,
-                publisher=publisher,
-                writer=writer,
-                penciler=penciller,
-                keywords=keywords,
-                estimated_value=market_value,
-                box_id=target_box.id,
-            )
-            session.add(comic)
-            imported += 1
-        except Exception as e:
-            errors.append(f"Book {i} ({book.get('File', '?')}): {e}")
 
     session.commit()
     return {

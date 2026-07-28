@@ -207,31 +207,6 @@
   background: var(--color-border);
 }
 
-.browseRow {
-  margin-top: var(--space-sm);
-  display: flex;
-  justify-content: center;
-}
-
-.browseBtn {
-  min-height: var(--touch-target);
-  padding: 10px 20px;
-  font-size: var(--font-base);
-  font-weight: 700;
-  border: 2px dashed var(--color-primary);
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--color-primary);
-  cursor: pointer;
-  width: 100%;
-  -webkit-tap-highlight-color: transparent;
-  transition: background 0.15s;
-}
-
-.browseBtn:active {
-  background: var(--color-bg-light);
-}
-
 /* ── Search Results ── */
 .searchResults {
   margin-bottom: 30px;
@@ -612,7 +587,256 @@
   gap: var(--space-sm);
 }
 
+/* ── ComicVine inline ── */
+.cvBadge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  color: #fff;
+  background: #6366f1;
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-left: 8px;
+  vertical-align: middle;
+  letter-spacing: 0.3px;
+}
+
+.seriesCardExpanded {
+  background: #eef2ff;
+  border-color: #6366f1;
+}
+
+.cvExpanded {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  padding: var(--space-md);
+  margin-top: -1px;
+}
+
+.cvLoading {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.cvIssueSkeleton {
+  aspect-ratio: 3/4;
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.cvIssuesToolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-sm);
+}
+
+.cvIssueCount {
+  font-size: var(--font-sm);
+  color: var(--color-text-muted);
+}
+
+.cvSelectActions {
+  display: flex;
+  gap: 6px;
+}
+
+.cvSelectBtn {
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  padding: 4px 12px;
+  font-size: var(--font-xs);
+  font-weight: 700;
+  border-radius: 4px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cvSelectBtn:active {
+  background: #e2e8f0;
+}
+
+.cvIssuesGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: var(--space-md);
+  max-height: 400px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cvIssueCard {
+  position: relative;
+  cursor: pointer;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  transition: border-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cvIssueCard:active {
+  transform: scale(0.97);
+}
+
+.cvIssueCardSelected {
+  border-color: #6366f1;
+}
+
+.cvIssueCover {
+  aspect-ratio: 3/4;
+  background: var(--color-bg-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cvIssueCover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cvCoverPlaceholder {
+  font-size: 28px;
+  opacity: 0.5;
+}
+
+.cvIssueLabel {
+  padding: 4px;
+  font-size: var(--font-xs);
+  line-height: 1.2;
+  background: #f8fafc;
+}
+
+.cvIssueNum {
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.cvIssueName {
+  display: block;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cvCheckbox {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid #cbd5e1;
+  background: rgba(255,255,255,0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: transparent;
+  transition: all 0.15s;
+}
+
+.cvCheckboxChecked {
+  background: #6366f1;
+  border-color: #6366f1;
+  color: #fff;
+}
+
+.cvEmpty {
+  font-size: var(--font-md);
+  color: var(--color-text-muted);
+  font-style: italic;
+  margin-bottom: var(--space-md);
+}
+
+.cvImportRow {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-md);
+}
+
+.cvImportBoxSelect {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cvBoxSelect {
+  flex: 1;
+  min-width: 160px;
+  padding: var(--space-sm) 10px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  min-height: var(--touch-target);
+  font-size: var(--font-sm);
+  background: #fff;
+}
+
+.cvImportOr {
+  font-size: var(--font-xs);
+  color: var(--color-text-muted);
+  font-weight: 700;
+}
+
+.cvBoxInput {
+  flex: 1;
+  min-width: 140px;
+  padding: var(--space-sm) 10px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  min-height: var(--touch-target);
+  font-size: var(--font-sm);
+}
+
+.cvImportBtn {
+  min-height: var(--touch-target);
+  background: #6366f1;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: var(--font-base);
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cvImportBtn:active {
+  background: #4f46e5;
+}
+
+.cvImportBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 @media (max-width: 480px) {
+  .cvIssuesGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .cvLoading {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
   .headerRight {
     gap: 4px;
   }
