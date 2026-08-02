@@ -4,10 +4,14 @@ import random
 import httpx
 import requests
 import urllib.parse
+from datetime import datetime, timedelta
 
 from curl_cffi.requests import AsyncSession
+from sqlmodel import select
 
 from bs4 import BeautifulSoup
+
+from models import ComicVineVolume, ComicVineIssue
 
 # Helper framework to print diagnostic blocks to terminal console
 def log_scan_diagnostic(step_title: str, message: str, is_error: bool = False):
@@ -439,8 +443,32 @@ async def fetch_series_title_from_comic_db(barcode_str: str) -> tuple:
     return None, None
 
 
-def search_external_series(query: str, limit: int = 5) -> list:
-    """Search ComicVine for series matching a query string."""
+def upsert_comicvine_volume(session, vol: dict):
+    """Upsert a ComicVine volume into the local cache."""
+    if not session or not vol.get("id"):
+        return
+    existing = session.get(ComicVineVolume, vol["id"])
+    if existing:
+        existing.title = vol.get("title", existing.title)
+        existing.publisher = vol.get("publisher", existing.publisher)
+        existing.issue_count = vol.get("issue_count", existing.issue_count)
+        existing.start_year = vol.get("start_year")
+        existing.url = vol.get("url")
+        existing.updated_at = datetime.utcnow()
+    else:
+        session.add(ComicVineVolume(
+            id=vol["id"],
+            title=vol.get("title", ""),
+            publisher=vol.get("publisher", ""),
+            issue_count=vol.get("issue_count", 0),
+            start_year=vol.get("start_year"),
+            url=vol.get("url"),
+        ))
+    session.commit()
+
+
+def search_external_series(query: str, limit: int = 25, session=None) -> list:
+    """Search ComicVine for series matching a query string. Caches volumes locally."""
     api_key = os.getenv("COMIC_VINE_API_KEY")
     if not api_key:
         log_scan_diagnostic("ComicVine Search", "COMIC_VINE_API_KEY not set", is_error=True)
@@ -470,22 +498,42 @@ def search_external_series(query: str, limit: int = 5) -> list:
         for vol in data.get("results", [])[:limit]:
             publisher = vol.get("publisher") or {}
             publisher_name = publisher.get("name", "Unknown") if isinstance(publisher, dict) else "Unknown"
-            results.append({
+            vol_data = {
                 "id": vol.get("id"),
                 "title": vol.get("name", query),
                 "publisher": publisher_name,
                 "issue_count": vol.get("count_of_issues", 0),
                 "start_year": vol.get("start_year"),
                 "url": vol.get("site_detail_url"),
-            })
+            }
+            results.append(vol_data)
+            upsert_comicvine_volume(session, vol_data)
         return results
     except Exception as e:
         log_scan_diagnostic("ComicVine Search", f"External series search failed: {e}", is_error=True)
     return []
 
 
-def fetch_comicvine_volume_issues(volume_id: int, limit: int = 100) -> list:
-    """Fetch full issue details for a ComicVine volume."""
+def fetch_comicvine_volume_issues(volume_id: int, limit: int = 100, session=None) -> list:
+    """Fetch full issue details for a ComicVine volume. Serves from local cache when fresh."""
+    if session:
+        cached = session.exec(
+            select(ComicVineIssue).where(ComicVineIssue.volume_id == volume_id)
+        ).all()
+        if cached:
+            latest = max((c.updated_at for c in cached), default=None)
+            if latest and (datetime.utcnow() - latest).days < 7:
+                cached_issues = [{
+                    "id": c.id,
+                    "issue_number": c.issue_number,
+                    "name": c.name or "",
+                    "cover_date": c.cover_date or "",
+                    "cover_image": c.cover_image,
+                    "description": c.description or "",
+                } for c in cached]
+                log_scan_diagnostic("ComicVine Issues", f"Volume {volume_id} served from cache ({len(cached_issues)} issues)")
+                return cached_issues
+
     api_key = os.getenv("COMIC_VINE_API_KEY")
     if not api_key:
         log_scan_diagnostic("ComicVine Issues", "COMIC_VINE_API_KEY not set", is_error=True)
@@ -523,6 +571,25 @@ def fetch_comicvine_volume_issues(volume_id: int, limit: int = 100) -> list:
                 "description": issue.get("description") or "",
             })
         log_scan_diagnostic("ComicVine Issues", f"Fetched {len(issues)} issues")
+
+        if session:
+            stale = session.exec(
+                select(ComicVineIssue).where(ComicVineIssue.volume_id == volume_id)
+            ).all()
+            for row in stale:
+                session.delete(row)
+            for issue in issues:
+                session.add(ComicVineIssue(
+                    id=issue["id"],
+                    volume_id=volume_id,
+                    issue_number=issue["issue_number"],
+                    name=issue["name"],
+                    cover_date=issue["cover_date"],
+                    cover_image=issue["cover_image"],
+                    description=issue["description"],
+                ))
+            session.commit()
+
         return issues
     except Exception as e:
         log_scan_diagnostic("ComicVine Issues", f"Failed: {e}", is_error=True)

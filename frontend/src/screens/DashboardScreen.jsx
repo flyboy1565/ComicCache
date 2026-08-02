@@ -8,7 +8,7 @@ import UserPanel from '../components/UserPanel';
 import RegisterScreen from '../screens/RegisterScreen';
 import AdminScreen from '../screens/AdminScreen';
 import BottomNav from '../components/BottomNav';
-import { fetchBoxes, fetchValuation, createBox, searchComics, addToPicklist, fetchComicVineIssues, importComicVineIssues } from '../utilities/api';
+import { fetchBoxes, fetchValuation, createBox, searchComics, addToPicklist } from '../utilities/api';
 import styles from './DashboardScreen.module.css';
 
 export default function DashboardScreen({ user, onLogout, theme, onThemeChange }) {
@@ -20,13 +20,13 @@ export default function DashboardScreen({ user, onLogout, theme, onThemeChange }
   const [isNewBoxFormOpen, setIsNewBoxFormOpen] = useState(false);
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  const [allSeries, setAllSeries] = useState([]);
 
   const [currentView, setCurrentView] = useState('dashboard');
   const [selectedBoxForDetail, setSelectedBoxForDetail] = useState(null);
 
   const [toast, setToast] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [externalSeries, setExternalSeries] = useState([]);
   const pullStartY = useRef(0);
   const [pullDistance, setPullDistance] = useState(0);
 
@@ -72,13 +72,6 @@ export default function DashboardScreen({ user, onLogout, theme, onThemeChange }
   const handleCancelRegister = () => setCurrentView('dashboard');
 
   const [isPicklistOpen, setIsPicklistOpen] = useState(false);
-  const [cvExpandedSeries, setCvExpandedSeries] = useState(null);
-  const [cvIssues, setCvIssues] = useState([]);
-  const [cvLoadingIssues, setCvLoadingIssues] = useState(false);
-  const [cvSelectedIssues, setCvSelectedIssues] = useState(new Set());
-  const [cvBoxId, setCvBoxId] = useState('');
-  const [cvCreateBox, setCvCreateBox] = useState('');
-  const [cvImporting, setCvImporting] = useState(false);
   const [bottomNavTab, setBottomNavTab] = useState('home');
   const [picklistCount, setPicklistCount] = useState(() => {
     try {
@@ -176,14 +169,14 @@ export default function DashboardScreen({ user, onLogout, theme, onThemeChange }
   useEffect(() => {
     if (globalSearchQuery.trim().length < 2) {
       setSearchResults([]);
-      setExternalSeries([]);
+      setAllSeries([]);
       return;
     }
     const delayDebounce = setTimeout(() => {
       searchComics(globalSearchQuery)
         .then(data => {
-          setSearchResults(data.results || data);
-          setExternalSeries(data.external || []);
+          setSearchResults(data.results || []);
+          setAllSeries(data.series || []);
         })
         .catch(err => console.error(err));
     }, 300);
@@ -201,81 +194,6 @@ export default function DashboardScreen({ user, onLogout, theme, onThemeChange }
         setIsNewBoxFormOpen(false);
         loadVaultData();
       });
-  };
-
-  const handleCvExpandSeries = async (series) => {
-    if (cvExpandedSeries && cvExpandedSeries.id === series.id) {
-      setCvExpandedSeries(null);
-      setCvIssues([]);
-      setCvSelectedIssues(new Set());
-      return;
-    }
-    setCvExpandedSeries(series);
-    setCvIssues([]);
-    setCvSelectedIssues(new Set());
-    setCvLoadingIssues(true);
-    try {
-      const data = await fetchComicVineIssues(series.id);
-      setCvIssues(data.issues || []);
-    } catch (e) {
-      showToast('Failed to load issues from ComicVine', 'error');
-    } finally {
-      setCvLoadingIssues(false);
-    }
-  };
-
-  const handleCvToggleIssue = (issueNumber) => {
-    setCvSelectedIssues(prev => {
-      const next = new Set(prev);
-      if (next.has(issueNumber)) next.delete(issueNumber);
-      else next.add(issueNumber);
-      return next;
-    });
-  };
-
-  const handleCvSelectAll = () => {
-    setCvSelectedIssues(new Set(cvIssues.map(i => i.issue_number)));
-  };
-
-  const handleCvDeselectAll = () => {
-    setCvSelectedIssues(new Set());
-  };
-
-  const handleCvImport = async () => {
-    if (cvSelectedIssues.size === 0) {
-      showToast('Select at least one issue', 'error');
-      return;
-    }
-    if (!cvBoxId && !cvCreateBox.trim()) {
-      showToast('Select a box or enter a new box name', 'error');
-      return;
-    }
-    setCvImporting(true);
-    try {
-      const selected = cvIssues
-        .filter(i => cvSelectedIssues.has(i.issue_number))
-        .map(i => ({
-          issue_number: i.issue_number,
-          title: cvExpandedSeries.title,
-          publisher: cvExpandedSeries.publisher,
-          cover_image: i.cover_image,
-        }));
-      const result = await importComicVineIssues({
-        box_id: cvBoxId ? parseInt(cvBoxId) : null,
-        create_box: cvCreateBox.trim() || null,
-        issues: selected,
-      });
-      showToast(`Added ${result.imported} issues to "${result.box_name}"`);
-      setCvSelectedIssues(new Set());
-      setCvIssues([]);
-      setCvExpandedSeries(null);
-      setCvBoxId('');
-      setCvCreateBox('');
-    } catch (e) {
-      showToast(e.message || 'Import failed', 'error');
-    } finally {
-      setCvImporting(false);
-    }
   };
 
   const globalTotalBooks = Object.values(boxValuations).reduce((acc, curr) => acc + (curr?.total_comics || 0), 0);
@@ -348,7 +266,7 @@ export default function DashboardScreen({ user, onLogout, theme, onThemeChange }
           />
           {globalSearchQuery.length > 0 && (
             <button
-              onClick={() => { setGlobalSearchQuery(''); setSearchResults([]); setExternalSeries([]); }}
+              onClick={() => { setGlobalSearchQuery(''); setSearchResults([]); setAllSeries([]); }}
               className={styles.searchClear}
               aria-label="Clear search"
             >
@@ -363,137 +281,54 @@ export default function DashboardScreen({ user, onLogout, theme, onThemeChange }
         <section className={styles.searchResults}>
           <div className={styles.searchResultsHeader}>
             <h3 className={styles.searchResultsTitle}>Query Results</h3>
-            <button onClick={() => { setGlobalSearchQuery(''); setSearchResults([]); setExternalSeries([]); }} className={styles.btnGhost}>Clear</button>
+            <button onClick={() => { setGlobalSearchQuery(''); setSearchResults([]); setAllSeries([]); }} className={styles.btnGhost}>Clear</button>
           </div>
 
           <div className={styles.seriesSection}>
             <h4 className={styles.seriesSectionTitle}>📚 Matching Series</h4>
             <div className={styles.seriesList}>
-              {Array.from(new Set(searchResults.map(c => `${c.title}|||${c.publisher}`))).map(seriesKey => {
-                const [title, publisher] = seriesKey.split('|||');
-                const totalInVault = searchResults.filter(c => c.title === title && c.publisher === publisher).length;
-
+              {allSeries.map((s, i) => {
+                if (s.source === 'local') {
+                  return (
+                    <div
+                      key={`local-${s.title}-${s.publisher}`}
+                      onClick={() => setActiveSeriesFocus({ title: s.title, publisher: s.publisher })}
+                      className={styles.seriesCard}
+                    >
+                      <div>
+                        <strong className={styles.seriesCardTitle}>{s.title}</strong>
+                        <div className={styles.seriesCardPublisher}>{s.publisher}</div>
+                      </div>
+                      <span className={styles.seriesCardAction}>
+                        Open Run Timeline ({s.issue_count} owned) ➔
+                      </span>
+                    </div>
+                  );
+                }
+                const isExpanded = false;
                 return (
-                  <div 
-                    key={seriesKey} 
-                    onClick={() => setActiveSeriesFocus({ title, publisher })}
-                    className={styles.seriesCard}
+                  <div
+                    key={`cv-${i}`}
+                    onClick={() => setActiveSeriesFocus({ title: s.title, publisher: s.publisher, volumeId: s.id })}
+                    className={`${styles.seriesCard}`}
                   >
                     <div>
-                      <strong className={styles.seriesCardTitle}>{title}</strong>
-                      <div className={styles.seriesCardPublisher}>{publisher}</div>
+                      <strong className={styles.seriesCardTitle}>
+                        {s.title}
+                        <span className={styles.cvBadge}>🌐 ComicVine</span>
+                      </strong>
+                      <div className={styles.seriesCardPublisher}>
+                        {s.publisher} · {s.issue_count} issues since {s.start_year || '—'}
+                      </div>
                     </div>
                     <span className={styles.seriesCardAction}>
-                      Open Run Timeline ({totalInVault} owned) ➔
+                      View {s.issue_count} issues ➔
                     </span>
                   </div>
                 );
               })}
 
-              {externalSeries.map((s, i) => {
-                const isExpanded = cvExpandedSeries && cvExpandedSeries.id === s.id;
-                return (
-                  <div key={`cv-${i}`}>
-                    <div
-                      onClick={() => handleCvExpandSeries(s)}
-                      className={`${styles.seriesCard} ${isExpanded ? styles.seriesCardExpanded : ''}`}
-                    >
-                      <div>
-                        <strong className={styles.seriesCardTitle}>
-                          {s.title}
-                          <span className={styles.cvBadge}>🌐 ComicVine</span>
-                        </strong>
-                        <div className={styles.seriesCardPublisher}>
-                          {s.publisher} · {s.issue_count} issues since {s.start_year || '—'}
-                        </div>
-                      </div>
-                      <span className={styles.seriesCardAction}>
-                        {isExpanded ? '▲ Close' : `Browse ${s.issue_count} issues ➔`}
-                      </span>
-                    </div>
-
-                    {isExpanded && (
-                      <div className={styles.cvExpanded}>
-                        {cvLoadingIssues ? (
-                          <div className={styles.cvLoading}>
-                            {Array.from({length: 4}).map((_, j) => (
-                              <div key={j} className={styles.cvIssueSkeleton} />
-                            ))}
-                          </div>
-                        ) : (
-                          <>
-                            <div className={styles.cvIssuesToolbar}>
-                              <span className={styles.cvIssueCount}>
-                                {cvIssues.length} issues · {cvSelectedIssues.size} selected
-                              </span>
-                              <div className={styles.cvSelectActions}>
-                                <button onClick={handleCvSelectAll} className={styles.cvSelectBtn}>All</button>
-                                <button onClick={handleCvDeselectAll} className={styles.cvSelectBtn}>None</button>
-                              </div>
-                            </div>
-
-                            <div className={styles.cvIssuesGrid}>
-                              {cvIssues.map(issue => {
-                                const checked = cvSelectedIssues.has(issue.issue_number);
-                                return (
-                                  <div
-                                    key={issue.id || issue.issue_number}
-                                    onClick={() => handleCvToggleIssue(issue.issue_number)}
-                                    className={`${styles.cvIssueCard} ${checked ? styles.cvIssueCardSelected : ''}`}
-                                  >
-                                    <div className={styles.cvIssueCover}>
-                                      {issue.cover_image ? (
-                                        <img src={issue.cover_image} alt="" />
-                                      ) : (
-                                        <div className={styles.cvCoverPlaceholder}>📘</div>
-                                      )}
-                                    </div>
-                                    <div className={styles.cvIssueLabel}>
-                                      <span className={styles.cvIssueNum}>#{issue.issue_number}</span>
-                                      {issue.name && <span className={styles.cvIssueName}>{issue.name}</span>}
-                                    </div>
-                                    <div className={`${styles.cvCheckbox} ${checked ? styles.cvCheckboxChecked : ''}`}>
-                                      {checked ? '✓' : ''}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-
-                            {cvIssues.length === 0 && (
-                              <div className={styles.cvEmpty}>No issues found for this series.</div>
-                            )}
-
-                            <div className={styles.cvImportRow}>
-                              <div className={styles.cvImportBoxSelect}>
-                                <select value={cvBoxId} onChange={e => setCvBoxId(e.target.value)} className={styles.cvBoxSelect}>
-                                  <option value="">-- Existing box --</option>
-                                  {boxes.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                                </select>
-                                <span className={styles.cvImportOr}>or</span>
-                                <input
-                                  type="text" placeholder="New box name"
-                                  value={cvCreateBox} onChange={e => setCvCreateBox(e.target.value)}
-                                  className={styles.cvBoxInput}
-                                />
-                              </div>
-                              <button
-                                onClick={handleCvImport}
-                                disabled={cvImporting || cvSelectedIssues.size === 0}
-                                className={styles.cvImportBtn}
-                              >
-                                {cvImporting ? 'Importing...' : `Add ${cvSelectedIssues.size} to Box`}
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-
-              {searchResults.length === 0 && externalSeries.length === 0 && (
+              {allSeries.length === 0 && (
                 <div className={styles.emptyState}>No matching series found.</div>
               )}
             </div>
@@ -636,7 +471,9 @@ export default function DashboardScreen({ user, onLogout, theme, onThemeChange }
         <SeriesVolumeViewer 
           title={activeSeriesFocus.title} 
           publisher={activeSeriesFocus.publisher} 
+          volumeId={activeSeriesFocus.volumeId}
           onClose={() => setActiveSeriesFocus(null)} 
+          showToast={showToast}
         />
       )}
 

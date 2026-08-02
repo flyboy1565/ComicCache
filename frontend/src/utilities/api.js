@@ -284,6 +284,12 @@ export async function fetchComicVineIssues(volumeId, limit = 100) {
   return res.json();
 }
 
+export async function fetchComicVineOverview(volumeId) {
+  const res = await fetch(`${API_BASE_URL}/comicvine/series/${volumeId}/overview`);
+  if (!res.ok) throw new Error("Failed to load series from ComicVine");
+  return res.json();
+}
+
 export async function importComicVineIssues(payload) {
   const res = await authFetch(`${API_BASE_URL}/comicvine/import`, {
     method: 'POST',

@@ -1,17 +1,24 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { fetchSeriesOverview, fetchComicDetail, fetchCoverForIssue, addToPicklist } from '../utilities/api';
+import { fetchSeriesOverview, fetchComicDetail, fetchCoverForIssue, addToPicklist, fetchComicVineOverview, fetchBoxes, importComicVineIssues } from '../utilities/api';
 import ComicBubbleIcon from './ComicBubbleIcon';
 import ComicDetailModal from './ComicDetailModal';
 import Skeleton from './Skeleton';
 import styles from './SeriesVolumeViewer.module.css';
 
-export default function SeriesVolumeViewer({ title, publisher, onClose }) {
+export default function SeriesVolumeViewer({ title, publisher, volumeId, onClose, showToast }) {
+  const isExternal = Boolean(volumeId);
   const [seriesData, setSeriesData] = useState(null);
   const [loading, setLoading] = useState(true);
   const pollRef = useRef(null);
   const [selectedComic, setSelectedComic] = useState(null);
   const [comicLoading, setComicLoading] = useState(false);
   const swipeStartX = useRef(0);
+
+  const [selectedIssues, setSelectedIssues] = useState(new Set());
+  const [boxes, setBoxes] = useState([]);
+  const [cvBoxId, setCvBoxId] = useState('');
+  const [cvCreateBox, setCvCreateBox] = useState('');
+  const [cvImporting, setCvImporting] = useState(false);
 
   const handleTouchStart = (e) => {
     swipeStartX.current = e.touches[0].clientX;
@@ -27,13 +34,17 @@ export default function SeriesVolumeViewer({ title, publisher, onClose }) {
   const loadSeries = () => {
     if (!title || !publisher) return;
     setLoading(true);
-    fetchSeriesOverview(title, publisher)
+    const req = isExternal
+      ? fetchComicVineOverview(volumeId)
+      : fetchSeriesOverview(title, publisher);
+    req
       .then(data => {
         setSeriesData(data);
         setLoading(false);
       })
       .catch(err => {
         console.error(err);
+        if (showToast) showToast('Failed to load series', 'error');
         setLoading(false);
       });
   };
@@ -43,7 +54,15 @@ export default function SeriesVolumeViewer({ title, publisher, onClose }) {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [title, publisher]);
+  }, [title, publisher, volumeId]);
+
+  useEffect(() => {
+    if (isExternal) {
+      fetchBoxes()
+        .then(data => setBoxes(data || []))
+        .catch(() => setBoxes([]));
+    }
+  }, [isExternal]);
 
   const handleCloseModal = useCallback(() => setSelectedComic(null), []);
   const handleViewSeries = useCallback(() => { setSelectedComic(null); }, []);
@@ -51,7 +70,7 @@ export default function SeriesVolumeViewer({ title, publisher, onClose }) {
 
   useEffect(() => {
     if (pollRef.current) clearInterval(pollRef.current);
-    if (seriesData?.cover_gathering?.pending > 0) {
+    if (!isExternal && seriesData?.cover_gathering?.pending > 0) {
       pollRef.current = setInterval(() => {
         fetchSeriesOverview(title, publisher)
           .then(data => {
@@ -67,7 +86,58 @@ export default function SeriesVolumeViewer({ title, publisher, onClose }) {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [seriesData?.cover_gathering?.pending, title, publisher]);
+  }, [seriesData?.cover_gathering?.pending, title, publisher, isExternal]);
+
+  const toggleIssue = (issueNumber) => {
+    setSelectedIssues(prev => {
+      const next = new Set(prev);
+      if (next.has(issueNumber)) next.delete(issueNumber);
+      else next.add(issueNumber);
+      return next;
+    });
+  };
+
+  const selectAllMissing = () => {
+    setSelectedIssues(new Set(filteredTimeline.filter(i => i.status !== 'in_stock').map(i => i.issue_number)));
+  };
+
+  const deselectAll = () => setSelectedIssues(new Set());
+
+  const handleImport = async () => {
+    if (selectedIssues.size === 0) {
+      if (showToast) showToast('Select at least one issue', 'error');
+      return;
+    }
+    if (!cvBoxId && !cvCreateBox.trim()) {
+      if (showToast) showToast('Select a box or enter a new box name', 'error');
+      return;
+    }
+    setCvImporting(true);
+    try {
+      const selected = filteredTimeline
+        .filter(t => selectedIssues.has(t.issue_number))
+        .map(t => ({
+          issue_number: t.issue_number,
+          title: seriesData.series_title,
+          publisher: seriesData.publisher,
+          cover_image: t.cover_image,
+        }));
+      const result = await importComicVineIssues({
+        box_id: cvBoxId ? parseInt(cvBoxId) : null,
+        create_box: cvCreateBox.trim() || null,
+        issues: selected,
+      });
+      if (showToast) showToast(`Added ${result.imported} issues to "${result.box_name}"`);
+      setSelectedIssues(new Set());
+      setCvBoxId('');
+      setCvCreateBox('');
+      loadSeries();
+    } catch (e) {
+      if (showToast) showToast(e.message || 'Import failed', 'error');
+    } finally {
+      setCvImporting(false);
+    }
+  };
 
   if (!title || !publisher) return null;
 
@@ -94,6 +164,7 @@ export default function SeriesVolumeViewer({ title, publisher, onClose }) {
             <div>
               <span className={styles.publisherLabel}>
                 {publisher} COLLECTION
+                {isExternal && <span className={styles.cvBadge}>🌐 ComicVine</span>}
               </span>
               <h2 className={styles.seriesTitle}>
                 {title}
@@ -141,7 +212,38 @@ export default function SeriesVolumeViewer({ title, publisher, onClose }) {
           )}
         </div>
 
-        {gathering && gathering.pending > 0 && (
+        {isExternal && seriesData && (
+          <div className={styles.importBar}>
+            <div className={styles.importBarTop}>
+              <span className={styles.importCount}>{selectedIssues.size} selected</span>
+              <div className={styles.importSelectActions}>
+                <button onClick={selectAllMissing} className={styles.importSelectBtn}>Missing</button>
+                <button onClick={deselectAll} className={styles.importSelectBtn}>None</button>
+              </div>
+            </div>
+            <div className={styles.importRow}>
+              <select value={cvBoxId} onChange={e => setCvBoxId(e.target.value)} className={styles.importBoxSelect}>
+                <option value="">-- Existing box --</option>
+                {boxes.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+              <span className={styles.importOr}>or</span>
+              <input
+                type="text" placeholder="New box name"
+                value={cvCreateBox} onChange={e => setCvCreateBox(e.target.value)}
+                className={styles.importBoxInput}
+              />
+              <button
+                onClick={handleImport}
+                disabled={cvImporting || selectedIssues.size === 0}
+                className={styles.importBtn}
+              >
+                {cvImporting ? 'Importing...' : `Add ${selectedIssues.size}`}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {gathering && !isExternal && gathering.pending > 0 && (
           <div className={styles.gatheringBanner}>
             <span style={{ fontSize: '14px' }}>🔄</span>
             <span>
@@ -164,6 +266,7 @@ export default function SeriesVolumeViewer({ title, publisher, onClose }) {
           ) : (
             filteredTimeline.map((item) => {
               const hasBook = item.status === 'in_stock';
+              const checked = selectedIssues.has(item.issue_number);
               
               return (
                 <div 
@@ -202,6 +305,14 @@ export default function SeriesVolumeViewer({ title, publisher, onClose }) {
                   }}
                   className={`${styles.timelineItem} ${!hasBook ? styles.timelineItemMissing : ''}`}
                 >
+                  {isExternal && (
+                    <div
+                      className={`${styles.checkBox} ${checked ? styles.checkBoxChecked : ''}`}
+                      onClick={(e) => { e.stopPropagation(); toggleIssue(item.issue_number); }}
+                    >
+                      {checked ? '✓' : ''}
+                    </div>
+                  )}
                   <div className={`${styles.coverBox} ${
                     item.cover_status === 'cached' ? styles.coverBoxCached
                     : item.cover_status === 'pending' ? styles.coverBoxPending
@@ -226,6 +337,10 @@ export default function SeriesVolumeViewer({ title, publisher, onClose }) {
                         Issue #{item.issue_number}
                       </strong>
                     </div>
+
+                    {isExternal && item.issue_name && (
+                      <div className={styles.issueName}>{item.issue_name}</div>
+                    )}
                     
                     <div className={styles.boxLocation}>
                       {hasBook ? item.box_name : 'Not in vault'}

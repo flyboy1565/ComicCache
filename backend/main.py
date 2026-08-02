@@ -12,7 +12,7 @@ from sqlmodel import Session, SQLModel, select
 from dotenv import load_dotenv
 
 from database import init_db, get_session
-from models import Box, BoxCreate, Comic, ComicCreate, PicklistItem, PicklistItemCreate, User, CoverCache, Role
+from models import Box, BoxCreate, Comic, ComicCreate, PicklistItem, PicklistItemCreate, User, CoverCache, Role, ComicVineVolume, ComicVineIssue
 from schema import BatchScanPayload, ScanRequest
 from auth import create_access_token, get_current_user, hash_password, verify_password, check_permission, require_role, has_permission
 
@@ -373,21 +373,23 @@ def get_box_comics(box_id: int, session: Session = Depends(get_session)):
 @app.get("/api/v1/comics/search")
 def search_comics(query: str, session: Session = Depends(get_session)):
     if not query or len(query.strip()) < 2:
-        return {"results": [], "external": []}
-        
-    search_term = f"%{query.strip()}%"
+        return {"results": [], "series": []}
+
+    q = query.strip()
+    search_term = f"%{q}%"
+
     statement = select(Comic).where(
         (Comic.title.like(search_term)) |
         (Comic.writer.like(search_term)) |
         (Comic.penciler.like(search_term)) |
         (Comic.keywords.like(search_term)) |
         (Comic.publisher.like(search_term)) |
-        (Comic.barcode == query.strip())
+        (Comic.barcode == q)
     )
-    results = session.exec(statement).all()
-    
+    comic_results = session.exec(statement).all()
+
     transformed_results = []
-    for comic in results:
+    for comic in comic_results:
         transformed_results.append({
             "id": comic.id,
             "title": comic.title,
@@ -402,8 +404,42 @@ def search_comics(query: str, session: Session = Depends(get_session)):
             "box_location": comic.box.location
         })
 
-    external = search_external_series(query.strip())
-    return {"results": transformed_results, "external": external}
+    series_map = {}
+    for comic in comic_results:
+        key = f"{comic.title}|||{comic.publisher}"
+        if key not in series_map:
+            series_map[key] = {
+                "source": "local",
+                "title": comic.title,
+                "publisher": comic.publisher,
+                "issue_count": 0,
+                "cover_image": None,
+                "start_year": None,
+            }
+        series_map[key]["issue_count"] += 1
+        if comic.cover_image and not series_map[key]["cover_image"]:
+            series_map[key]["cover_image"] = comic.cover_image
+
+    local_series = list(series_map.values())
+    external = search_external_series(q, session=session)
+    external_series = [{**s, "source": "external", "cover_image": None} for s in external]
+
+    def relevance_score(s):
+        title_lower = s["title"].lower()
+        q_lower = q.lower()
+        if title_lower == q_lower:
+            tier = 0
+        elif title_lower.startswith(q_lower):
+            tier = 1
+        elif q_lower in title_lower:
+            tier = 2
+        else:
+            tier = 3
+        return (tier, -s.get("issue_count", 0), title_lower)
+
+    all_series = sorted(local_series + external_series, key=relevance_score)
+
+    return {"results": transformed_results, "series": all_series}
 
 
 @app.get("/api/v1/comics/{comic_id}")
@@ -955,25 +991,85 @@ async def import_csv(
 # COMICVINE BROWSER API
 # -----------------------------------------------------------------
 @app.get("/api/v1/comicvine/series")
-def comicvine_search_series(query: str, publisher: Optional[str] = None, limit: int = 15):
+def comicvine_search_series(query: str, publisher: Optional[str] = None, limit: int = 15,
+                            session: Session = Depends(get_session)):
     api_key = os.getenv("COMIC_VINE_API_KEY")
     if not api_key:
         raise HTTPException(status_code=400, detail="COMIC_VINE_API_KEY not configured")
 
-    results = search_external_series(query, limit=limit)
+    results = search_external_series(query, limit=limit, session=session)
     if publisher:
         results = [r for r in results if publisher.lower() in r.get("publisher", "").lower()]
     return {"results": results}
 
 
 @app.get("/api/v1/comicvine/series/{volume_id}/issues")
-def comicvine_volume_issues(volume_id: int, limit: int = 100):
+def comicvine_volume_issues(volume_id: int, limit: int = 100, session: Session = Depends(get_session)):
     api_key = os.getenv("COMIC_VINE_API_KEY")
     if not api_key:
         raise HTTPException(status_code=400, detail="COMIC_VINE_API_KEY not configured")
 
-    issues = fetch_comicvine_volume_issues(volume_id, limit=limit)
+    issues = fetch_comicvine_volume_issues(volume_id, limit=limit, session=session)
     return {"issues": issues}
+
+
+@app.get("/api/v1/comicvine/series/{volume_id}/overview")
+def comicvine_volume_overview(volume_id: int, session: Session = Depends(get_session)):
+    """Return a SeriesVolumeViewer-shaped timeline for a ComicVine volume, served from cache."""
+    volume = session.get(ComicVineVolume, volume_id)
+    if not volume:
+        raise HTTPException(status_code=404, detail="Series not found. Search ComicVine first to cache it.")
+
+    issues = fetch_comicvine_volume_issues(volume_id, session=session)
+
+    title = volume.title
+    publisher = volume.publisher
+
+    owned_statement = select(Comic).where(Comic.title == title, Comic.publisher == publisher)
+    owned_comics = session.exec(owned_statement).all()
+    owned_map = {c.issue_number: c for c in owned_comics}
+
+    timeline_items = []
+    for issue in issues:
+        num = issue["issue_number"]
+        if num in owned_map:
+            comic = owned_map[num]
+            timeline_items.append({
+                "issue_number": num,
+                "status": "in_stock",
+                "id": comic.id,
+                "estimated_value": comic.estimated_value,
+                "box_name": comic.box.name,
+                "box_location": comic.box.location,
+                "cover_image": comic.cover_image or issue["cover_image"],
+                "cover_status": "cached",
+                "interest_count": 0,
+                "issue_name": issue.get("name") or "",
+            })
+        else:
+            timeline_items.append({
+                "issue_number": num,
+                "status": "missing",
+                "id": f"cv-{volume_id}-{num}",
+                "estimated_value": 0.00,
+                "box_name": "Not In Vault",
+                "box_location": None,
+                "cover_image": issue.get("cover_image"),
+                "cover_status": "cached" if issue.get("cover_image") else "not_found",
+                "interest_count": 0,
+                "issue_name": issue.get("name") or "",
+            })
+
+    return {
+        "series_title": title,
+        "publisher": publisher,
+        "volume_id": volume_id,
+        "total_owned": len(owned_comics),
+        "total_missing": len(timeline_items) - len(owned_comics),
+        "total_series_value": round(sum(c.estimated_value for c in owned_comics), 2),
+        "cover_gathering": {"cached": len(timeline_items), "pending": 0, "not_found": 0},
+        "timeline": timeline_items,
+    }
 
 
 @app.post("/api/v1/comicvine/import")

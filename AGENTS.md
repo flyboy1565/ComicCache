@@ -53,3 +53,26 @@
 - [ ] Build frontend import UI in Admin screen (file upload + status feedback)
 - [ ] Consider ComicInfo.xml (per-file metadata inside CBZ/CBR) as a secondary import source via the Anansi schema
 
+## Phase F — ComicVine Caching + Series Viewer (Complete)
+
+### Completed
+- [x] F1: Search returns unified series list (local + ComicVine) sorted by exact-match → starts-with → contains, then issue count desc (backend `main.py` `/api/v1/comics/search`, `utils.py search_external_series`)
+- [x] F2: ComicVine caching — new `ComicVineVolume` + `ComicVineIssue` tables in `models.py`. Volumes cached on search, issues cached per volume (7-day TTL). `fetch_comicvine_volume_issues` serves from DB cache when fresh.
+- [x] F3: New endpoint `GET /api/v1/comicvine/series/{volume_id}/overview` returns SeriesVolumeViewer-shaped timeline (issues marked in_stock if owned locally, else missing, with ComicVine covers + issue names)
+- [x] F4: Frontend — SeriesVolumeViewer accepts optional `volumeId` prop → external mode with album view, checkbox issue selection, box select/create, and bulk import. Dashboard "View X issues" on a ComicVine series opens the viewer (inline expand removed).
+- [x] Build verified — frontend + backend compile clean, Docker rebuilt
+
+### Files changed
+| File | Change |
+|---|---|
+| `backend/models.py` | Added `ComicVineVolume` + `ComicVineIssue` tables |
+| `backend/utils.py` | Caching in `search_external_series` + `fetch_comicvine_volume_issues` (session param, upsert, TTL) |
+| `backend/main.py` | Session passthrough, new `/comicvine/series/{id}/overview` endpoint |
+| `frontend/src/utilities/api.js` | Added `fetchComicVineOverview` |
+| `frontend/src/components/SeriesVolumeViewer.jsx` + `.module.css` | External mode (`volumeId`) + import bar/checkbox styles |
+| `frontend/src/screens/DashboardScreen.jsx` | "View X issues" opens viewer, removed inline expand UI/state |
+| `.env` | Added `COMIC_VINE_API_KEY` + JWT vars (was missing in Docker → external search empty) |
+
+### Notes
+- Docker containers were running stale code + lacked `COMIC_VINE_API_KEY` (root `.env` didn't carry it). Fixed by adding the key to root `.env`; rebuild with `docker compose up -d --build backend frontend`.
+

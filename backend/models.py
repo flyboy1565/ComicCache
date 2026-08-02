@@ -108,3 +108,26 @@ class CoverCache(SQLModel, table=True):
     __table_args__ = (
         UniqueConstraint("series_title", "issue_number", "publisher", name="uq_series_issue_publisher"),
     )
+
+
+class ComicVineVolume(SQLModel, table=True):
+    __tablename__ = "comicvine_volume"
+    id: int = Field(primary_key=True)  # ComicVine volume ID
+    title: str = Field(index=True)
+    publisher: str = Field(default="")
+    issue_count: int = Field(default=0)
+    start_year: Optional[str] = None
+    url: Optional[str] = None
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ComicVineIssue(SQLModel, table=True):
+    __tablename__ = "comicvine_issue"
+    id: int = Field(primary_key=True)  # ComicVine issue ID
+    volume_id: int = Field(foreign_key="comicvine_volume.id", index=True)
+    issue_number: str
+    name: Optional[str] = None
+    cover_date: Optional[str] = None
+    cover_image: Optional[str] = None
+    description: Optional[str] = None
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
