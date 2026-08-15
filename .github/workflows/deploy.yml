@@ -1,0 +1,74 @@
+name: Deploy to Holfam
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    name: Build + Deploy
+    runs-on:
+      - self-hosted
+      - comiccache
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Sync repo into deploy dir
+        run: |
+          rsync -az --delete \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude 'frontend/node_modules' \
+            --exclude 'frontend/dist' \
+            --exclude 'backend/__pycache__' \
+            --exclude '.venv' \
+            --exclude '.env' \
+            --exclude 'data' \
+            ./ "$HOME/projects/comiccache/"
+
+      - name: Write production .env
+        env:
+          COMIC_VINE_API_KEY: ${{ secrets.COMIC_VINE_API_KEY }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_ALGORITHM: ${{ secrets.JWT_ALGORITHM }}
+          ACCESS_TOKEN_EXPIRE_MINUTES: ${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
+          ADMIN_USERNAME: ${{ secrets.ADMIN_USERNAME }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+        run: |
+          mkdir -p "$HOME/projects/comiccache"
+          cat > "$HOME/projects/comiccache/.env" <<EOF
+          COMIC_VINE_API_KEY=${COMIC_VINE_API_KEY}
+          JWT_SECRET=${JWT_SECRET}
+          JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+          ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
+          ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+          ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+          ADMIN_EMAIL=${ADMIN_EMAIL:-admin@comiccache.local}
+          EOF
+
+      - name: Validate compose config
+        run: |
+          cd "$HOME/projects/comiccache"
+          docker compose -f docker-compose.server.yml config > /dev/null
+
+      - name: Deploy stack
+        run: |
+          cd "$HOME/projects/comiccache"
+          docker compose -f docker-compose.server.yml up -d --build
+
+      - name: Smoke test
+        run: |
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8001/api/v1/comics/recent)
+            if [ "$code" != "000" ]; then break; fi
+            echo "waiting for backend... ($i)"
+            sleep 2
+          done
+          curl -fsS -o /dev/null http://127.0.0.1:8081/
+          echo "Backend + frontend responding"
+
+      - name: Cleanup images
+        run: docker image prune -f
