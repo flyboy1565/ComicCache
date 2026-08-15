@@ -8,9 +8,7 @@ on:
 jobs:
   deploy:
     name: Build + Deploy
-    runs-on:
-      - self-hosted
-      - comiccache
+    runs-on: self-hosted
     steps:
       - name: Checkout
         uses: actions/checkout@v5
