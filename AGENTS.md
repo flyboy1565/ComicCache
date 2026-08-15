@@ -119,7 +119,7 @@
 
 ### Architecture
 - **Deploy target**: `holfam` (192.168.68.62), production stack lives in `~/projects/comiccache/` (NOT `~/ComicCache`).
-- **Trigger**: push to `master` → GitHub Actions → **self-hosted runner on holfam** runs `~/actions-runner-comiccache` (systemd service `actions.runner.flyboy1565-ComicCache.holfammedia`). The runner carries the `comiccache` label; workflow requires `runs-on: [self-hosted, comiccache]`.
+- **Trigger**: push to `master` → GitHub Actions → **self-hosted runner on holfam** runs `~/actions-runner-comiccache` (systemd service `actions.runner.flyboy1565-ComicCache.holfammedia`, registered as agent `holfammedia` for repo ComicCache). Workflow uses bare `runs-on: self-hosted` (self-hosted runners are per-repo, so no label pin needed).
 - **DB**: bind mount `./data:/data` inside the deploy dir (`DB_PATH=/data/comiccache.db`). Migrated one-time from the old `comiccache_comiccache_data` volume.
 
 ### Workflow (`.github/workflows/deploy.yml`)

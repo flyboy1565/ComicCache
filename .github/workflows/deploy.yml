@@ -59,13 +59,18 @@ jobs:
 
       - name: Smoke test
         run: |
+          ok=""
           for i in $(seq 1 30); do
-            code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8001/api/v1/comics/recent)
-            if [ "$code" != "000" ]; then break; fi
-            echo "waiting for backend... ($i)"
+            bcode=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8001/api/v1/comics/recent)
+            fcode=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8081/)
+            if [ "$bcode" != "000" ] && [ "$fcode" = "200" ]; then
+              ok=yes
+              break
+            fi
+            echo "waiting for services... backend=$bcode frontend=$fcode ($i)"
             sleep 2
           done
-          curl -fsS -o /dev/null http://127.0.0.1:8081/
+          [ -n "$ok" ]
           echo "Backend + frontend responding"
 
       - name: Cleanup images
