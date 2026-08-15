@@ -7,7 +7,9 @@ import SeriesVolumeViewer from '../components/SeriesVolumeViewer';
 import UserPanel from '../components/UserPanel';
 import RegisterScreen from '../screens/RegisterScreen';
 import AdminScreen from '../screens/AdminScreen';
+import AddScreen from '../screens/AddScreen';
 import BottomNav from '../components/BottomNav';
+import TopNav from '../components/TopNav';
 import { fetchBoxes, fetchValuation, createBox, searchComics, addToPicklist } from '../utilities/api';
 import styles from './DashboardScreen.module.css';
 
@@ -80,11 +82,15 @@ export default function DashboardScreen({ user, onLogout, theme, onThemeChange }
     } catch { return 0; }
   });
 
-  const handleBottomNavPress = (tab) => {
+  const handleBottomNavPress = (tab, isDesktop = false) => {
     setBottomNavTab(tab);
     switch (tab) {
       case 'scan':
-        setIsScannerOpen(true);
+        if (isDesktop) {
+          setCurrentView('add');
+        } else {
+          setIsScannerOpen(true);
+        }
         break;
       case 'picklist':
         setIsPicklistOpen(true);
@@ -92,7 +98,12 @@ export default function DashboardScreen({ user, onLogout, theme, onThemeChange }
       case 'user':
         setIsUserPanelOpen(true);
         break;
+      case 'admin':
+        setCurrentView('admin');
+        break;
+      case 'home':
       default:
+        if (isDesktop) setCurrentView('dashboard');
         break;
     }
   };
@@ -142,7 +153,7 @@ export default function DashboardScreen({ user, onLogout, theme, onThemeChange }
 
   useEffect(() => {
     loadVaultData();
-  }, [isScannerOpen]);
+  }, [isScannerOpen, currentView]);
 
   const loadVaultData = () => {
     fetchBoxes()
@@ -200,6 +211,7 @@ export default function DashboardScreen({ user, onLogout, theme, onThemeChange }
   const globalMarketValue = Object.values(boxValuations).reduce((acc, curr) => acc + (curr?.financials?.total_estimated_retail_value || 0), 0);
 
   return (
+    <>
     <div
       className={styles.container}
       onTouchStart={handleTouchStart}
@@ -477,13 +489,30 @@ export default function DashboardScreen({ user, onLogout, theme, onThemeChange }
         />
       )}
 
-      <BottomNav
-        activeTab={bottomNavTab}
-        onTabPress={handleBottomNavPress}
-        user={user}
-        picklistCount={picklistCount}
-      />
+      <div className={styles.desktopNav}>
+        <TopNav
+          activeTab={bottomNavTab}
+          onTabPress={(tab) => handleBottomNavPress(tab, true)}
+          user={user}
+          picklistCount={picklistCount}
+          theme={theme}
+        />
+      </div>
+
+      <div className={styles.mobileNav}>
+        <BottomNav
+          activeTab={bottomNavTab}
+          onTabPress={(tab) => handleBottomNavPress(tab, false)}
+          user={user}
+          picklistCount={picklistCount}
+        />
+      </div>
 
     </div>
+
+    {currentView === 'add' && (
+      <AddScreen onBack={() => setCurrentView('dashboard')} />
+    )}
+    </>
   );
 }

@@ -4,7 +4,7 @@ import { postBarcodeScan } from '../utilities/api';
 import { soundFX } from '../utilities/audio';
 import styles from './ComicScanner.module.css';
 
-export default function ComicScanner({ activeBoxId }) {
+export default function ComicScanner({ activeBoxId, onComicAdded }) {
   const scannerRef = useRef(null);
   const isTransitioningRef = useRef(false);
   
@@ -162,6 +162,7 @@ export default function ComicScanner({ activeBoxId }) {
             status: "success",
             value: response.data.estimated_value || 0.00
           });
+          if (onComicAdded) onComicAdded(response.data);
         }
       })
       .catch((err) => {

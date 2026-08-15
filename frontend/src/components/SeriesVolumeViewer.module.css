@@ -441,6 +441,31 @@
   cursor: not-allowed;
 }
 
+.lostSaleRow {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.lostSaleActionBtn {
+  min-height: var(--touch-target);
+  padding: 0 16px;
+  background: #7c2d12;
+  border: 1px solid #92400e;
+  border-radius: 6px;
+  color: #fcd34d;
+  font-size: var(--font-sm);
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lostSaleActionBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .boxLocation {
   font-size: var(--font-xs);
   color: var(--color-text-muted);
@@ -465,6 +490,221 @@
 
 .issueValueMissing {
   color: var(--color-text-muted);
+}
+
+.lostValueBadge {
+  background: #78350f;
+  border: 1px solid #92400e;
+  color: #fcd34d;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: var(--font-sm);
+  white-space: nowrap;
+}
+
+.lostValueAmount {
+  color: #fcd34d;
+}
+
+.lostBadge {
+  font-size: 10px;
+  font-weight: bold;
+  color: #fcd34d;
+  background: #78350f;
+  border: 1px solid #92400e;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.lostSaleBtn {
+  margin-top: 4px;
+  min-height: 28px;
+  padding: 4px 10px;
+  background: #7c2d12;
+  border: 1px solid #92400e;
+  border-radius: 6px;
+  color: #fcd34d;
+  font-size: var(--font-xs);
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lostSaleBtn:active {
+  background: #92400e;
+}
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+}
+
+.modalBox {
+  width: 100%;
+  max-width: 360px;
+  background: #1a2230;
+  border: 1px solid #4a5568;
+  border-radius: 12px;
+  padding: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #fff;
+  font-size: var(--font-lg);
+}
+
+.modalClose {
+  min-height: var(--touch-target);
+  min-width: var(--touch-target);
+  background: #2d3748;
+  border: none;
+  border-radius: 6px;
+  color: var(--color-text-light);
+  font-weight: bold;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.modalSub {
+  font-size: var(--font-sm);
+  color: var(--color-text-light);
+  line-height: 1.4;
+}
+
+.modalSub strong {
+  color: #fff;
+}
+
+.existingList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.existingRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  background: #2d3748;
+  border: 1px solid #92400e;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.existingInfo {
+  font-size: var(--font-xs);
+  color: var(--color-text-on-dark);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.existingInfo strong {
+  color: #fcd34d;
+}
+
+.modalDateNote {
+  font-size: var(--font-xs);
+  color: var(--color-text-muted);
+  text-align: right;
+}
+
+.modalDateNote strong {
+  color: var(--color-text-on-dark);
+}
+
+.existingRemove {
+  min-height: var(--touch-target);
+  min-width: var(--touch-target);
+  background: #742a2a;
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.modalField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modalField label {
+  font-size: var(--font-xs);
+  font-weight: 700;
+  color: var(--color-text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.modalField input {
+  padding: var(--space-sm) 10px;
+  border-radius: 6px;
+  border: 1px solid #4a5568;
+  min-height: var(--touch-target);
+  font-size: var(--font-sm);
+  background: #2d3748;
+  color: var(--color-text-on-dark);
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.modalCancel {
+  min-height: var(--touch-target);
+  padding: 0 16px;
+  background: #2d3748;
+  border: 1px solid #4a5568;
+  border-radius: 6px;
+  color: var(--color-text-on-dark);
+  font-size: var(--font-sm);
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.modalSave {
+  min-height: var(--touch-target);
+  padding: 0 16px;
+  background: #b45309;
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: var(--font-sm);
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.modalSave:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .loadingOverlay {

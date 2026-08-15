@@ -76,3 +76,68 @@
 ### Notes
 - Docker containers were running stale code + lacked `COMIC_VINE_API_KEY` (root `.env` didn't carry it). Fixed by adding the key to root `.env`; rebuild with `docker compose up -d --build backend frontend`.
 
+## Phase G — Lost Sales (Demand Tracking) (Complete)
+
+### Completed
+- [x] G1: Backend — new `LostSale` table (`lostsale`: title, issue_number, publisher, lost_date, notes, customer_name, customer_phone, user_id, created_at) in `models.py` + raw migration in `database.py`. Entry date is auto-set server-side (`lost_date` = today); no dollar amount is stored
+- [x] G2: New endpoints — `GET/POST /api/v1/sales/lost` (any logged-in user) + `DELETE /api/v1/sales/lost/{sale_id}` (owner only); `_lost_sale_totals` helper builds per-issue count map
+- [x] G3: Both series overviews (`/series/overview` and `/comicvine/series/{id}/overview`) return per-issue `lost_sale_count` + series-level `total_lost_sales`
+- [x] G4: Frontend — SeriesVolumeViewer: missing rows get a `💸 Log` button + amber `LOST SALE ×N` badge; modal to log a lost sale (notes, optional customer name/phone, auto entry date shown) with existing-log list + per-log remove; header shows `💸 Lost: N` when any exist
+- [x] G5: Frontend bulk lost sales — external mode import bar gains a `💸 Log selected as lost sales` button; the lost-sale modal handles multiple selected missing issues (same notes/customer applied per issue, one LostSale row each), clears selection after saving
+- [x] G6: Fixed `database.py` migrations — all used `SQLModel.text` which does NOT exist in SQLModel 0.0.39 (silently swallowed by try/except). Replaced with `sqlalchemy.text`; lostsale ADD COLUMN customer_name/customer_phone + DROP sale_amount now actually apply
+- [x] Build verified — frontend + backend compile clean, Docker rebuilt, endpoints tested (create/list/delete with customer fields + auto date + overview counts)
+
+### Files changed
+| File | Change |
+|---|---|
+| `backend/models.py` | Added `LostSale` + `LostSaleCreate` (notes, customer_name, customer_phone; no sale_amount) |
+| `backend/database.py` | `lostsale` table + column migrations; **all `SQLModel.text` → `sqlalchemy.text`** |
+| `backend/main.py` | `_lost_sale_totals` helper, `/sales/lost` GET/POST/DELETE, lost_sale_count in both overviews |
+| `frontend/src/utilities/api.js` | Added `fetchLostSales`, `addLostSale`, `removeLostSale` |
+| `frontend/src/components/SeriesVolumeViewer.jsx` + `.module.css` | Lost-sale button/badge/modal (notes + customer name/phone) + styles |
+
+### Notes
+- Lost sales are demand tracking (missed sales), logged against a MISSING issue via title + issue_number + publisher match. No Comic row is created or mutated.
+- The lost-sale entry date is always the creation date (server-set); users only supply notes + optional customer name/phone.
+
+## Phase H — Admin Desktop Nav Tab (Complete)
+
+### Completed
+- [x] H1: Added an "Admin ⚙️" tab to the desktop `TopNav` (`TopNav.jsx`) — rendered only for `user.role === 'admin' || 'owner'`; opens `AdminScreen`. Non-admins get no tab. Build verified.
+
+## Follow-up Backlog (Low Priority)
+
+- [ ] Mirror the Admin tab in the mobile `BottomNav.jsx` so admin users get a tab-level admin home too (consistent with desktop).
+- [ ] Revisit the large chunk warning (652 kB JS) once nav/feature work stabilizes — consider route-level lazy loading.
+
+## Phase I — Admin Panel Desktop Sidebar Layout (Complete)
+
+### Completed
+- [x] I1: `AdminScreen` tabs (Staff/Roles/Inventory/Stats/Import) now render in a left sidebar column on desktop (`min-width: 768px`, sticky, 220px) with content on the right; horizontal tab bar preserved on mobile. CSS in `AdminScreen.module.css` (`.layout`/`.sidebar`/`.content`), JSX in `AdminScreen.jsx`. Build verified.
+
+## Phase J — GitHub Actions Deployment (Complete)
+
+### Architecture
+- **Deploy target**: `holfam` (192.168.68.62), production stack lives in `~/projects/comiccache/` (NOT `~/ComicCache`).
+- **Trigger**: push to `master` → GitHub Actions → **self-hosted runner on holfam** runs `~/actions-runner-comiccache` (systemd service `actions.runner.flyboy1565-ComicCache.holfammedia`). The runner carries the `comiccache` label; workflow requires `runs-on: [self-hosted, comiccache]`.
+- **DB**: bind mount `./data:/data` inside the deploy dir (`DB_PATH=/data/comiccache.db`). Migrated one-time from the old `comiccache_comiccache_data` volume.
+
+### Workflow (`.github/workflows/deploy.yml`)
+1. `actions/checkout@v5`
+2. `rsync -az --delete` repo → `$HOME/projects/comiccache/` (excludes `.git`, `.github`, `node_modules`, `dist`, `.venv`, `.env`, `data`, `__pycache__`)
+3. Write production `.env` from repo secrets
+4. `docker compose -f docker-compose.server.yml config` (validate)
+5. `docker compose -f docker-compose.server.yml up -d --build`
+6. Smoke test: backend responds on `:8001/api/v1/comics/recent`, frontend 200 on `:8081/`
+7. `docker image prune -f`
+
+### Production compose (`docker-compose.server.yml`)
+- Standalone (does NOT compose with `docker-compose.yml`). Frontend `comiccache-frontend` on host `8081:80`, backend `comiccache-backend` on `8001:8001`, both attach to external `webproxy` network (Nginx Proxy Manager fronting 80/443 from DuckDNS).
+
+### Required GitHub secrets (repo → Settings → Secrets and variables → Actions)
+`COMIC_VINE_API_KEY`, `JWT_SECRET`, `JWT_ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_EMAIL` — values should match the server's `.env` (especially `JWT_SECRET`, or existing users get logged out).
+
+### Notes
+- Never push a fresh `JWT_SECRET` into the secrets store casually — it invalidates all existing sessions.
+- `.actions-runner/` at the repo root is the laptop's stray runner dir (gitignored, ~215 MB); safe to delete now the holfam runner exists.
+

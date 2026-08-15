@@ -661,6 +661,48 @@
   background: #2b6cb0;
 }
 
+.layout {
+  width: 100%;
+}
+
+.sidebar {
+  width: 100%;
+}
+
+.content {
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .layout {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2xl);
+  }
+
+  .sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    position: sticky;
+    top: var(--space-xl);
+  }
+
+  .sidebar .tabBar {
+    flex-direction: column;
+    align-items: stretch;
+    margin-bottom: 0;
+  }
+
+  .sidebar .tabBtn {
+    text-align: left;
+    width: 100%;
+  }
+.content {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
 @media (max-width: 480px) {
   .staffCard {
     gap: 6px;

@@ -1,0 +1,128 @@
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-xl);
+  padding-top: var(--safe-top);
+  min-height: calc(56px + var(--safe-top));
+  background: #fff;
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.brandIcon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.brandName {
+  font-size: var(--font-xl);
+  font-weight: 800;
+  color: var(--color-primary);
+  font-family: var(--theme-font-heading);
+  letter-spacing: 0.02em;
+}
+
+.supermanS {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: #2563eb;
+  border-radius: 50%;
+  position: relative;
+}
+
+.supermanS::after {
+  content: 'S';
+  color: #dc2626;
+  font-family: 'Bangers', cursive;
+  font-size: 19px;
+  line-height: 1;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 56px;
+  min-width: 64px;
+  padding: 4px 12px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--color-text-muted);
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s, background 0.15s;
+}
+
+.tab:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+}
+
+.tab:active {
+  opacity: 0.7;
+}
+
+.active {
+  color: var(--color-primary);
+  background: var(--color-danger-bg);
+}
+
+.icon {
+  font-size: 18px;
+  line-height: 1;
+  position: relative;
+  display: inline-block;
+}
+
+.badge {
+  position: absolute;
+  top: -6px;
+  right: -10px;
+  background: var(--color-danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 600;
+}

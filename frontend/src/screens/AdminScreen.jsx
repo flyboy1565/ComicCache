@@ -130,12 +130,8 @@ export default function AdminScreen({ user, onBack }) {
         <h2 className={styles.pageTitle}>Admin Panel</h2>
       </div>
 
-      {message && (
-        <div className={`${styles.message} ${message.type === 'success' ? styles.messageSuccess : styles.messageError}`}>
-          {message.text}
-        </div>
-      )}
-
+      <div className={styles.layout}>
+      <aside className={styles.sidebar}>
       <div className={styles.tabBar}>
         <button onClick={() => setTab('staff')}
           className={`${styles.tabBtn} ${tab === 'staff' ? `${styles.tabActive} ${styles.tabStaffActive}` : styles.tabInactive}`}>
@@ -158,6 +154,14 @@ export default function AdminScreen({ user, onBack }) {
           Import
         </button>
       </div>
+      </aside>
+
+      <div className={styles.content}>
+        {message && (
+          <div className={`${styles.message} ${message.type === 'success' ? styles.messageSuccess : styles.messageError}`}>
+            {message.text}
+          </div>
+        )}
 
       {tab === 'staff' && (
         <>
@@ -482,6 +486,9 @@ export default function AdminScreen({ user, onBack }) {
           </div>
         </div>
       )}
+
+      </div>
+      </div>
 
       {permEditor && (
         <div className={styles.permOverlay}>

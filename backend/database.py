@@ -1,5 +1,6 @@
 import os
 from sqlmodel import Session, SQLModel, create_engine
+from sqlalchemy import text
 
 DB_PATH = os.getenv("DB_PATH")
 if not DB_PATH:
@@ -24,7 +25,7 @@ def init_db():
     try:
         with engine.connect() as conn:
             conn.execute(
-                SQLModel.text(
+                text(
                     "ALTER TABLE user ADD COLUMN must_change_password BOOLEAN NOT NULL DEFAULT 0"
                 )
             )
@@ -36,7 +37,7 @@ def init_db():
     try:
         with engine.connect() as conn:
             conn.execute(
-                SQLModel.text(
+                text(
                     "CREATE TABLE IF NOT EXISTS covercache ("
                     "id INTEGER PRIMARY KEY AUTOINCREMENT, "
                     "series_title TEXT NOT NULL, "
@@ -59,7 +60,7 @@ def init_db():
     try:
         with engine.connect() as conn:
             conn.execute(
-                SQLModel.text(
+                text(
                     "ALTER TABLE covercache ADD COLUMN hit_count INTEGER NOT NULL DEFAULT 1"
                 )
             )
@@ -71,7 +72,7 @@ def init_db():
     try:
         with engine.connect() as conn:
             conn.execute(
-                SQLModel.text(
+                text(
                     "ALTER TABLE user ADD COLUMN role_id INTEGER NOT NULL DEFAULT 5"
                 )
             )
@@ -83,8 +84,64 @@ def init_db():
     try:
         with engine.connect() as conn:
             conn.execute(
-                SQLModel.text(
+                text(
                     "ALTER TABLE user ADD COLUMN permission_overrides TEXT"
+                )
+            )
+            conn.commit()
+    except Exception:
+        pass
+
+    # Migration: lostsale table
+    try:
+        with engine.connect() as conn:
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS lostsale ("
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                    "title TEXT NOT NULL, "
+                    "issue_number TEXT NOT NULL, "
+                    "publisher TEXT NOT NULL DEFAULT '', "
+                    "lost_date TEXT NOT NULL DEFAULT '', "
+                    "notes TEXT, "
+                    "user_id INTEGER NOT NULL, "
+                    "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+                    ")"
+                )
+            )
+            conn.commit()
+    except Exception:
+        pass
+
+    # Migration: lostsale customer_name / customer_phone
+    try:
+        with engine.connect() as conn:
+            conn.execute(
+                text(
+                    "ALTER TABLE lostsale ADD COLUMN customer_name TEXT"
+                )
+            )
+            conn.commit()
+    except Exception:
+        pass
+
+    try:
+        with engine.connect() as conn:
+            conn.execute(
+                text(
+                    "ALTER TABLE lostsale ADD COLUMN customer_phone TEXT"
+                )
+            )
+            conn.commit()
+    except Exception:
+        pass
+
+    # Migration: lostsale drop sale_amount
+    try:
+        with engine.connect() as conn:
+            conn.execute(
+                text(
+                    "ALTER TABLE lostsale DROP COLUMN sale_amount"
                 )
             )
             conn.commit()

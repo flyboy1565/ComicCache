@@ -121,6 +121,27 @@ class ComicVineVolume(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class LostSaleBase(SQLModel):
+    title: str
+    issue_number: str
+    publisher: str = Field(default="")
+    lost_date: str = Field(default_factory=lambda: datetime.utcnow().strftime("%Y-%m-%d"))
+    notes: Optional[str] = None
+    customer_name: Optional[str] = None
+    customer_phone: Optional[str] = None
+
+
+class LostSale(LostSaleBase, table=True):
+    __tablename__ = "lostsale"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class LostSaleCreate(LostSaleBase):
+    pass
+
+
 class ComicVineIssue(SQLModel, table=True):
     __tablename__ = "comicvine_issue"
     id: int = Field(primary_key=True)  # ComicVine issue ID

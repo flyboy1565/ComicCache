@@ -12,7 +12,7 @@ from sqlmodel import Session, SQLModel, select
 from dotenv import load_dotenv
 
 from database import init_db, get_session
-from models import Box, BoxCreate, Comic, ComicCreate, PicklistItem, PicklistItemCreate, User, CoverCache, Role, ComicVineVolume, ComicVineIssue
+from models import Box, BoxCreate, Comic, ComicCreate, PicklistItem, PicklistItemCreate, User, CoverCache, Role, ComicVineVolume, ComicVineIssue, LostSale, LostSaleCreate
 from schema import BatchScanPayload, ScanRequest
 from auth import create_access_token, get_current_user, hash_password, verify_password, check_permission, require_role, has_permission
 
@@ -440,6 +440,28 @@ def search_comics(query: str, session: Session = Depends(get_session)):
     all_series = sorted(local_series + external_series, key=relevance_score)
 
     return {"results": transformed_results, "series": all_series}
+
+
+@app.get("/api/v1/comics/recent")
+def get_recent_comics(limit: int = 12, session: Session = Depends(get_session)):
+    limit = max(1, min(limit, 50))
+    statement = select(Comic).order_by(Comic.date_scanned.desc()).limit(limit)
+    comics = session.exec(statement).all()
+    return [
+        {
+            "id": c.id,
+            "title": c.title,
+            "issue_number": c.issue_number,
+            "publisher": c.publisher,
+            "cover_image": c.cover_image,
+            "estimated_value": c.estimated_value,
+            "barcode": c.barcode,
+            "box_name": c.box.name if c.box else None,
+            "box_location": c.box.location if c.box else None,
+            "date_scanned": c.date_scanned.isoformat() if c.date_scanned else None,
+        }
+        for c in comics
+    ]
 
 
 @app.get("/api/v1/comics/{comic_id}")
@@ -872,6 +894,55 @@ def clear_picklist(session: Session = Depends(get_session), current_user: User =
     return {"status": "cleared"}
 
 
+# --- LOST SALE (DEMAND TRACKING) ENDPOINTS ---
+
+def _lost_sale_totals(session: Session, title: str, publisher: str):
+    statement = select(LostSale).where(LostSale.title == title, LostSale.publisher == publisher)
+    rows = session.exec(statement).all()
+    count_by_issue = {}
+    total_count = 0
+    for row in rows:
+        count_by_issue[row.issue_number] = count_by_issue.get(row.issue_number, 0) + 1
+        total_count += 1
+    return count_by_issue, total_count
+
+
+@app.get("/api/v1/sales/lost")
+def list_lost_sales(session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    statement = select(LostSale).order_by(LostSale.created_at.desc()).limit(200)
+    return session.exec(statement).all()
+
+
+@app.post("/api/v1/sales/lost", response_model=LostSale)
+def create_lost_sale(payload: LostSaleCreate, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    db_item = LostSale(
+        title=payload.title.strip(),
+        issue_number=str(payload.issue_number).strip(),
+        publisher=payload.publisher or "",
+        lost_date=datetime.utcnow().strftime("%Y-%m-%d"),
+        notes=payload.notes,
+        customer_name=payload.customer_name or None,
+        customer_phone=payload.customer_phone or None,
+        user_id=current_user.id,
+    )
+    session.add(db_item)
+    session.commit()
+    session.refresh(db_item)
+    return db_item
+
+
+@app.delete("/api/v1/sales/lost/{sale_id}")
+def delete_lost_sale(sale_id: int, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    db_item = session.exec(
+        select(LostSale).where(LostSale.id == sale_id, LostSale.user_id == current_user.id)
+    ).first()
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Lost sale not found")
+    session.delete(db_item)
+    session.commit()
+    return {"status": "deleted"}
+
+
 @app.post("/api/v1/scan/batch")
 async def handle_batch_scan(payload: BatchScanPayload, session: Session = Depends(get_session)):
     target_box = session.get(Box, payload.box_id)
@@ -1029,6 +1100,8 @@ def comicvine_volume_overview(volume_id: int, session: Session = Depends(get_ses
     owned_comics = session.exec(owned_statement).all()
     owned_map = {c.issue_number: c for c in owned_comics}
 
+    lost_count_by_issue, total_lost_sales = _lost_sale_totals(session, title, publisher)
+
     timeline_items = []
     for issue in issues:
         num = issue["issue_number"]
@@ -1045,6 +1118,7 @@ def comicvine_volume_overview(volume_id: int, session: Session = Depends(get_ses
                 "cover_status": "cached",
                 "interest_count": 0,
                 "issue_name": issue.get("name") or "",
+                "lost_sale_count": 0,
             })
         else:
             timeline_items.append({
@@ -1058,6 +1132,7 @@ def comicvine_volume_overview(volume_id: int, session: Session = Depends(get_ses
                 "cover_status": "cached" if issue.get("cover_image") else "not_found",
                 "interest_count": 0,
                 "issue_name": issue.get("name") or "",
+                "lost_sale_count": lost_count_by_issue.get(num, 0),
             })
 
     return {
@@ -1067,6 +1142,7 @@ def comicvine_volume_overview(volume_id: int, session: Session = Depends(get_ses
         "total_owned": len(owned_comics),
         "total_missing": len(timeline_items) - len(owned_comics),
         "total_series_value": round(sum(c.estimated_value for c in owned_comics), 2),
+        "total_lost_sales": total_lost_sales,
         "cover_gathering": {"cached": len(timeline_items), "pending": 0, "not_found": 0},
         "timeline": timeline_items,
     }
@@ -1160,6 +1236,8 @@ async def get_series_overview(
     statement = select(Comic).where(Comic.title == title, Comic.publisher == publisher)
     owned_comics = session.exec(statement).all()
     owned_map = {c.issue_number: c for c in owned_comics}
+
+    lost_count_by_issue, total_lost_sales = _lost_sale_totals(session, title, publisher)
     
     official_numbers = fetch_official_series_run(title, publisher)
     if not official_numbers:
@@ -1210,7 +1288,8 @@ async def get_series_overview(
                 "box_location": comic.box.location,
                 "cover_image": cover_url,
                 "cover_status": cover_status,
-                "interest_count": cache.hit_count if cache else 0
+                "interest_count": cache.hit_count if cache else 0,
+                "lost_sale_count": 0,
             })
         else:
             if cache and cache.cover_url:
@@ -1230,7 +1309,8 @@ async def get_series_overview(
                 "box_location": None,
                 "cover_image": cover_url,
                 "cover_status": cover_status,
-                "interest_count": cache.hit_count if cache else 0
+                "interest_count": cache.hit_count if cache else 0,
+                "lost_sale_count": lost_count_by_issue.get(issue_str, 0),
             })
 
     # Synchronously fill the first 3 pending covers for OWNED issues only
@@ -1266,6 +1346,7 @@ async def get_series_overview(
         "total_owned": len(owned_comics),
         "total_missing": len(official_numbers) - len(owned_comics),
         "total_series_value": round(sum(c.estimated_value for c in owned_comics), 2),
+        "total_lost_sales": total_lost_sales,
         "cover_gathering": {
             "cached": cached_count,
             "pending": pending_count,

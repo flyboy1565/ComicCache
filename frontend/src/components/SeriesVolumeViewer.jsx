@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { fetchSeriesOverview, fetchComicDetail, fetchCoverForIssue, addToPicklist, fetchComicVineOverview, fetchBoxes, importComicVineIssues } from '../utilities/api';
+import { fetchSeriesOverview, fetchComicDetail, fetchCoverForIssue, addToPicklist, fetchComicVineOverview, fetchBoxes, importComicVineIssues, fetchLostSales, addLostSale, removeLostSale } from '../utilities/api';
 import ComicBubbleIcon from './ComicBubbleIcon';
 import ComicDetailModal from './ComicDetailModal';
 import Skeleton from './Skeleton';
@@ -19,6 +19,89 @@ export default function SeriesVolumeViewer({ title, publisher, volumeId, onClose
   const [cvBoxId, setCvBoxId] = useState('');
   const [cvCreateBox, setCvCreateBox] = useState('');
   const [cvImporting, setCvImporting] = useState(false);
+
+  const [lostSaleTarget, setLostSaleTarget] = useState(null); // { issues: [issue_number, ...] }
+  const [lostSales, setLostSales] = useState([]);
+  const [lostNotes, setLostNotes] = useState('');
+  const [lostCustomerName, setLostCustomerName] = useState('');
+  const [lostCustomerPhone, setLostCustomerPhone] = useState('');
+  const [lostSaving, setLostSaving] = useState(false);
+
+  const prepareLostSaleForm = async (issues) => {
+    setLostSaleTarget({ issues });
+    setLostNotes('');
+    setLostCustomerName('');
+    setLostCustomerPhone('');
+    try {
+      const all = await fetchLostSales();
+      setLostSales(all || []);
+    } catch {
+      setLostSales([]);
+    }
+  };
+
+  const openLostSaleModal = (item) => prepareLostSaleForm([item.issue_number]);
+
+  const openBulkLostSaleModal = () => {
+    const issues = (seriesData?.timeline || [])
+      .filter(i => selectedIssues.has(i.issue_number) && i.status !== 'in_stock')
+      .map(i => i.issue_number);
+    if (issues.length === 0) {
+      if (showToast) showToast('Select at least one missing issue', 'error');
+      return;
+    }
+    prepareLostSaleForm(issues);
+  };
+
+  const isBulkLostSale = lostSaleTarget && lostSaleTarget.issues.length > 1;
+
+  const existingLost = lostSaleTarget && lostSaleTarget.issues.length === 1
+    ? lostSales.filter(s =>
+        s.title === title &&
+        s.publisher === (seriesData?.publisher || publisher) &&
+        s.issue_number === lostSaleTarget.issues[0]
+      )
+    : [];
+
+  const handleSaveLostSale = async () => {
+    if (!lostSaleTarget || lostSaleTarget.issues.length === 0) return;
+    setLostSaving(true);
+    let saved = 0;
+    try {
+      for (const num of lostSaleTarget.issues) {
+        await addLostSale({
+          title,
+          issue_number: num,
+          publisher: seriesData?.publisher || publisher,
+          notes: lostNotes.trim() || null,
+          customer_name: lostCustomerName.trim() || null,
+          customer_phone: lostCustomerPhone.trim() || null,
+        });
+        saved += 1;
+      }
+      if (showToast) showToast(saved === 1
+        ? `Lost sale logged for #${lostSaleTarget.issues[0]}`
+        : `Logged ${saved} lost sales`);
+      setLostSaleTarget(null);
+      if (isBulkLostSale) setSelectedIssues(new Set());
+      loadSeries();
+    } catch (e) {
+      if (showToast) showToast(e.message || 'Failed to log lost sale', 'error');
+    } finally {
+      setLostSaving(false);
+    }
+  };
+
+  const handleRemoveLostSale = async (saleId) => {
+    try {
+      await removeLostSale(saleId);
+      const all = await fetchLostSales();
+      setLostSales(all || []);
+      loadSeries();
+    } catch (e) {
+      if (showToast) showToast(e.message || 'Failed to remove lost sale', 'error');
+    }
+  };
 
   const handleTouchStart = (e) => {
     swipeStartX.current = e.touches[0].clientX;
@@ -194,6 +277,12 @@ export default function SeriesVolumeViewer({ title, publisher, volumeId, onClose
                 {filterMode === 'missing' && <span style={{ fontSize: '10px', marginLeft: '2px' }}>✕</span>}
               </button>
 
+              {seriesData.total_lost_sales > 0 && (
+                <div className={styles.lostValueBadge}>
+                  💸 Lost: <strong className={styles.lostValueAmount}>{seriesData.total_lost_sales}</strong>
+                </div>
+              )}
+
               <div className={styles.valueBadge}>
                 Value: <strong className={styles.valueAmount}>${seriesData.total_series_value.toFixed(2)}</strong>
               </div>
@@ -238,6 +327,15 @@ export default function SeriesVolumeViewer({ title, publisher, volumeId, onClose
                 className={styles.importBtn}
               >
                 {cvImporting ? 'Importing...' : `Add ${selectedIssues.size}`}
+              </button>
+            </div>
+            <div className={styles.lostSaleRow}>
+              <button
+                onClick={openBulkLostSaleModal}
+                disabled={selectedIssues.size === 0}
+                className={styles.lostSaleActionBtn}
+              >
+                💸 Log selected as lost sales
               </button>
             </div>
           </div>
@@ -333,6 +431,11 @@ export default function SeriesVolumeViewer({ title, publisher, volumeId, onClose
                       <span className={hasBook ? styles.haveBadge : styles.missingBadge}>
                         {hasBook ? 'HAVE' : 'MISSING'}
                       </span>
+                      {!hasBook && item.lost_sale_count > 0 && (
+                        <span className={styles.lostBadge}>
+                          💸 LOST SALE{item.lost_sale_count > 1 ? ` ×${item.lost_sale_count}` : ''}
+                        </span>
+                      )}
                       <strong className={styles.issueNumber}>
                         Issue #{item.issue_number}
                       </strong>
@@ -349,8 +452,17 @@ export default function SeriesVolumeViewer({ title, publisher, volumeId, onClose
 
                   <div className={styles.financialCol}>
                     <div className={`${styles.issueValue} ${hasBook ? styles.issueValueHave : styles.issueValueMissing}`}>
-                      ${hasBook ? item.estimated_value.toFixed(2) : '0.00'}
+                      {hasBook ? `$${item.estimated_value.toFixed(2)}` : '$0.00'}
                     </div>
+                    {!hasBook && (
+                      <button
+                        className={styles.lostSaleBtn}
+                        onClick={(e) => { e.stopPropagation(); openLostSaleModal(item); }}
+                        title="Log lost sale"
+                      >
+                        💸 Log
+                      </button>
+                    )}
                   </div>
 
                 </div>
@@ -374,6 +486,74 @@ export default function SeriesVolumeViewer({ title, publisher, volumeId, onClose
           onViewSeries={handleViewSeries}
           onAddToPicklist={handleAddToPicklist}
         />
+      )}
+
+      {lostSaleTarget && (
+        <div className={styles.modalOverlay} onClick={() => setLostSaleTarget(null)}>
+          <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <strong>{isBulkLostSale ? `💸 Log ${lostSaleTarget.issues.length} lost sales` : '💸 Log lost sale'}</strong>
+              <button onClick={() => setLostSaleTarget(null)} className={styles.modalClose}>✕</button>
+            </div>
+            <div className={styles.modalSub}>
+              {isBulkLostSale ? (
+                <>Logging for issues: <strong>#{lostSaleTarget.issues.join(', #')}</strong></>
+              ) : (
+                <>Customer wanted <strong>{title}</strong> Issue #{lostSaleTarget.issues[0]} — you didn't have it.</>
+              )}
+            </div>
+
+            {existingLost.length > 0 && (
+              <div className={styles.existingList}>
+                {existingLost.map(s => (
+                  <div key={s.id} className={styles.existingRow}>
+                    <span className={styles.existingInfo}>
+                      <strong>{s.lost_date}</strong>
+                      {s.customer_name ? ` — ${s.customer_name}` : ''}
+                      {s.customer_phone ? ` (${s.customer_phone})` : ''}
+                      {s.notes ? ` · ${s.notes}` : ''}
+                    </span>
+                    <button className={styles.existingRemove} onClick={() => handleRemoveLostSale(s.id)}>✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className={styles.modalField}>
+              <label>Notes</label>
+              <input
+                type="text"
+                value={lostNotes} onChange={e => setLostNotes(e.target.value)}
+                placeholder="e.g. customer asked for it, wants #5 too"
+              />
+            </div>
+            <div className={styles.modalField}>
+              <label>Customer name (optional)</label>
+              <input
+                type="text"
+                value={lostCustomerName} onChange={e => setLostCustomerName(e.target.value)}
+                placeholder="e.g. Jane Doe"
+              />
+            </div>
+            <div className={styles.modalField}>
+              <label>Customer telephone (optional)</label>
+              <input
+                type="tel"
+                value={lostCustomerPhone} onChange={e => setLostCustomerPhone(e.target.value)}
+                placeholder="e.g. (555) 123-4567"
+              />
+            </div>
+            <div className={styles.modalDateNote}>
+              Entered on <strong>{new Date().toLocaleDateString()}</strong>
+            </div>
+            <div className={styles.modalActions}>
+              <button className={styles.modalCancel} onClick={() => setLostSaleTarget(null)}>Cancel</button>
+              <button className={styles.modalSave} onClick={handleSaveLostSale} disabled={lostSaving}>
+                {lostSaving ? 'Saving...' : isBulkLostSale ? `Log ${lostSaleTarget.issues.length}` : 'Log lost sale'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

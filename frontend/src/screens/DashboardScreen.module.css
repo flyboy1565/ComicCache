@@ -25,6 +25,34 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+/* ── Responsive Nav: bottom panel on mobile, top bar on desktop ── */
+.desktopNav {
+  display: none;
+}
+
+.mobileNav {
+  display: block;
+}
+
+@media (min-width: 768px) {
+  .desktopNav {
+    display: block;
+  }
+
+  .mobileNav {
+    display: none;
+  }
+
+  .container {
+    padding-top: calc(var(--space-lg) + 56px + var(--safe-top));
+    padding-bottom: var(--space-2xl);
+  }
+
+  .header {
+    display: none;
+  }
+}
+
 .headerTitle {
   margin: 0;
   color: var(--color-primary);

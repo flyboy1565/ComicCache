@@ -112,6 +112,12 @@ export async function fetchBoxComics(boxId) {
   return res.json();
 }
 
+export async function fetchRecentComics(limit = 12) {
+  const res = await fetch(`${API_BASE_URL}/comics/recent?limit=${limit}`);
+  if (!res.ok) throw new Error("Failed to load recent comics.");
+  return res.json();
+}
+
 export async function fetchPicklist() {
   const res = await authFetch(`${API_BASE_URL}/picklist`);
   if (!res.ok) throw new Error("Failed to load picklist.");
@@ -310,6 +316,33 @@ export async function registerWithRole(username, roleId) {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.detail || "Registration failed");
+  }
+  return res.json();
+}
+
+export async function fetchLostSales() {
+  const res = await authFetch(`${API_BASE_URL}/sales/lost`);
+  if (!res.ok) throw new Error("Failed to load lost sales");
+  return res.json();
+}
+
+export async function addLostSale(payload) {
+  const res = await authFetch(`${API_BASE_URL}/sales/lost`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || "Failed to log lost sale");
+  }
+  return res.json();
+}
+
+export async function removeLostSale(saleId) {
+  const res = await authFetch(`${API_BASE_URL}/sales/lost/${saleId}`, { method: 'DELETE' });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || "Failed to remove lost sale");
   }
   return res.json();
 }
